@@ -1,3 +1,4 @@
+#include "xtag/xtag.hpp"
 #include "detail/util.hpp"
 #include "klib/debug/assert.hpp"
 #include "klib/string/c_string.hpp"
@@ -5,6 +6,7 @@
 #include "xtag/types.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
+#include <filesystem>
 #include <format>
 #include <ranges>
 #include <string_view>
@@ -50,10 +52,12 @@ class ScopedErrno {
 }
 
 [[nodiscard]] auto validate(klib::CString const path, klib::CString const name) -> Result<void> {
-	if (path.as_view().empty()) { return to_error(Error::Type::InvalidArgument, "xattr::get(): passed path is empty"); }
-	if (name.as_view().empty()) { return to_error(Error::Type::InvalidArgument, "xattr::get(): passed name is empty"); }
+	if (path.as_view().empty()) { return to_error(Error::Type::InvalidArgument, "passed path is empty"); }
+	if (name.as_view().empty()) { return to_error(Error::Type::InvalidArgument, "passed name is empty"); }
 	return {};
 }
+
+constexpr auto tag_name_v = klib::CString{"user.xtag"};
 } // namespace
 
 auto xattr::get_to(std::string& buffer, klib::CString const path, klib::CString const name) -> Result<std::string_view> {
@@ -109,4 +113,39 @@ auto xtag::format_error(Error::Type const type, std::string_view const message) 
 auto xtag::to_error(Error::Type const type, std::string_view const message) -> std::unexpected<Error> {
 	auto msg = format_error(type, message);
 	return std::unexpected{Error{.type = type, .message = std::move(msg)}};
+}
+
+auto xtag::get_tags_to(std::vector<std::string>& out, fs::path const& path) -> Result<void> {
+	auto result = xattr::get(path.generic_string().c_str(), tag_name_v);
+	if (!result) {
+		switch (result.error().type) {
+		case Error::Type::NoData: return {};
+		default: return std::unexpected{std::move(result.error())};
+		}
+	}
+
+	detail::deserialize_tags_to(out, *result);
+	return {};
+}
+
+auto xtag::get_tags(fs::path const& path) -> Result<std::vector<std::string>> {
+	auto ret = std::vector<std::string>{};
+	return get_tags_to(ret, path).transform([&] { return std::move(ret); });
+}
+
+auto xtag::replace_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
+	auto const serialized = detail::serialize_tags(tags);
+	return xattr::set(path.generic_string().c_str(), tag_name_v, serialized);
+}
+
+auto xtag::append_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
+	return get_tags(path).and_then([&](std::span<std::string const> current) {
+		auto const combined = detail::combine_tags(current, tags);
+		return replace_tags(path, combined);
+	});
+}
+
+auto xtag::erase_tags(fs::path const& path) -> Result<void> {
+	auto const str = path.generic_string();
+	return xattr::remove(str.c_str(), tag_name_v);
 }
