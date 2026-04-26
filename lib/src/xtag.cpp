@@ -1,9 +1,12 @@
+#include "detail/util.hpp"
 #include "klib/debug/assert.hpp"
 #include "klib/string/c_string.hpp"
 #include "xtag/result.hpp"
+#include "xtag/types.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
 #include <format>
+#include <ranges>
 #include <string_view>
 
 #if !defined(__linux__)
@@ -92,6 +95,10 @@ auto xattr::remove(klib::CString const path, klib::CString const name) -> Result
 		if (result == -1) { return from_errno(path.as_view(), name.as_view()); }
 		return {};
 	});
+}
+
+void detail::deserialize_tags_to(std::vector<std::string>& out, std::string_view const serialized) {
+	for (auto const tag : std::views::split(serialized, '|')) { out.emplace_back(std::string_view{tag}); }
 }
 } // namespace xtag
 
