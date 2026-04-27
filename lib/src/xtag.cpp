@@ -3,6 +3,7 @@
 #include "klib/debug/assert.hpp"
 #include "klib/string/c_string.hpp"
 #include "xtag/result.hpp"
+#include "xtag/tag_storage.hpp"
 #include "xtag/types.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
@@ -58,6 +59,21 @@ class ScopedErrno {
 }
 
 constexpr auto tag_name_v = klib::CString{"user.xtag"};
+
+template <typename Func>
+void iterate_directory(fs::path const& directory, DirectoryParams const& params, Func const& per_entry, int const depth = 0) {
+	if (!fs::is_directory(directory)) { return; }
+	for (auto const& it : fs::directory_iterator{directory}) {
+		if (it.is_regular_file()) {
+			if ((params.filter & Filter::Directory) == Filter::Directory) { per_entry(it.path()); }
+			continue;
+		}
+
+		if (!it.is_directory()) { continue; }
+		if (depth >= params.depth) { continue; }
+		iterate_directory(it.path(), params, per_entry, depth + 1);
+	}
+}
 } // namespace
 
 auto xattr::get_to(std::string& buffer, klib::CString const path, klib::CString const name) -> Result<std::string_view> {
@@ -104,6 +120,43 @@ auto xattr::remove(klib::CString const path, klib::CString const name) -> Result
 void detail::deserialize_tags_to(std::vector<std::string>& out, std::string_view const serialized) {
 	for (auto const tag : std::views::split(serialized, '|')) { out.emplace_back(std::string_view{tag}); }
 }
+
+auto detail::deserialize_tags(std::string_view const serialized) -> std::vector<std::string> {
+	auto ret = std::vector<std::string>{};
+	deserialize_tags_to(ret, serialized);
+	return ret;
+}
+
+void detail::serialize_tags_to(std::string& out, std::span<std::string_view const> tags) {
+	for (auto const& tag : tags) {
+		if (!out.empty()) { out.push_back('|'); }
+		out.append(tag);
+	}
+}
+
+auto detail::serialize_tags(std::span<std::string_view const> tags) -> std::string {
+	auto ret = std::string{};
+	serialize_tags_to(ret, tags);
+	return ret;
+}
+
+void detail::combine_tags_to(std::vector<std::string_view>& out, std::span<std::string_view const> a, std::span<std::string_view const> b) {
+	out.reserve(out.size() + a.size() + b.size());
+	for (std::string_view const str : a) { out.push_back(str); }
+	for (std::string_view const str : b) { out.push_back(str); }
+}
+
+auto detail::combine_tags(std::span<std::string_view const> a, std::span<std::string_view const> b) -> std::vector<std::string_view> {
+	auto ret = std::vector<std::string_view>{};
+	combine_tags_to(ret, a, b);
+	return ret;
+}
+
+auto TagStorage::insert_tag(std::string tag) -> std::string_view {
+	auto it = m_tags.find(tag);
+	if (it == m_tags.end()) { it = m_tags.insert(std::move(tag)).first; }
+	return *it;
+}
 } // namespace xtag
 
 auto xtag::format_error(Error::Type const type, std::string_view const message) -> std::string {
@@ -115,7 +168,7 @@ auto xtag::to_error(Error::Type const type, std::string_view const message) -> s
 	return std::unexpected{Error{.type = type, .message = std::move(msg)}};
 }
 
-auto xtag::get_tags_to(std::vector<std::string>& out, fs::path const& path) -> Result<void> {
+auto xtag::get_tags_to(TagStorage& storage, std::vector<std::string_view>& out, fs::path const& path) -> Result<void> {
 	auto result = xattr::get(path.generic_string().c_str(), tag_name_v);
 	if (!result) {
 		switch (result.error().type) {
@@ -124,13 +177,16 @@ auto xtag::get_tags_to(std::vector<std::string>& out, fs::path const& path) -> R
 		}
 	}
 
-	detail::deserialize_tags_to(out, *result);
+	for (auto const it : std::views::split(*result, '|')) {
+		auto const tag = std::string_view{it};
+		out.push_back(storage.insert_tag(std::string{tag}));
+	}
 	return {};
 }
 
-auto xtag::get_tags(fs::path const& path) -> Result<std::vector<std::string>> {
-	auto ret = std::vector<std::string>{};
-	return get_tags_to(ret, path).transform([&] { return std::move(ret); });
+auto xtag::get_tags(TagStorage& storage, fs::path const& path) -> Result<std::vector<std::string_view>> {
+	auto ret = std::vector<std::string_view>{};
+	return get_tags_to(storage, ret, path).transform([&] { return std::move(ret); });
 }
 
 auto xtag::replace_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
@@ -138,8 +194,8 @@ auto xtag::replace_tags(fs::path const& path, std::span<std::string_view const> 
 	return xattr::set(path.generic_string().c_str(), tag_name_v, serialized);
 }
 
-auto xtag::append_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
-	return get_tags(path).and_then([&](std::span<std::string const> current) {
+auto xtag::append_tags(TagStorage& storage, fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
+	return get_tags(storage, path).and_then([&](std::span<std::string_view const> current) {
 		auto const combined = detail::combine_tags(current, tags);
 		return replace_tags(path, combined);
 	});
@@ -148,4 +204,19 @@ auto xtag::append_tags(fs::path const& path, std::span<std::string_view const> t
 auto xtag::erase_tags(fs::path const& path) -> Result<void> {
 	auto const str = path.generic_string();
 	return xattr::remove(str.c_str(), tag_name_v);
+}
+
+void xtag::get_tagged_to(TagStorage& storage, std::vector<TagEntry>& out, fs::path const& directory, DirectoryParams const& params) {
+	auto const per_entry = [&](fs::path path) {
+		auto tags = get_tags(storage, path);
+		if (!tags) { return; }
+		out.push_back(TagEntry{.path = std::move(path), .tags = std::move(*tags)});
+	};
+	iterate_directory(directory, params, per_entry);
+}
+
+auto xtag::get_tagged(TagStorage& storage, fs::path const& directory, DirectoryParams const& params) -> std::vector<TagEntry> {
+	auto ret = std::vector<TagEntry>{};
+	get_tagged_to(storage, ret, directory, params);
+	return ret;
 }

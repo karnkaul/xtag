@@ -8,12 +8,13 @@ namespace {
 using ErrorType = xtag::Error::Type;
 
 TEST_CASE(write_tags) {
-	auto tags = xtag::get_tags("nonexistent_path");
+	auto tag_storage = xtag::TagStorage{};
+	auto tags = xtag::get_tags(tag_storage, "nonexistent_path");
 	ASSERT(!tags);
 	EXPECT(tags.error().type == ErrorType::InvalidArgument);
 
-	auto const fixture = xtag::Fixture{};
-	tags = xtag::get_tags(fixture.test_dir.get_path());
+	auto fixture = xtag::Fixture{};
+	tags = xtag::get_tags(fixture.tag_storage, fixture.test_dir.get_path());
 	ASSERT(tags);
 	EXPECT(tags->empty());
 
@@ -23,7 +24,7 @@ TEST_CASE(write_tags) {
 	auto result = xtag::replace_tags(fixture.test_dir.get_path(), tags_to_write);
 	EXPECT(result);
 
-	tags = xtag::get_tags(fixture.test_dir.get_path());
+	tags = xtag::get_tags(fixture.tag_storage, fixture.test_dir.get_path());
 	ASSERT(tags);
 	ASSERT(tags->size() == 2);
 	EXPECT(tags->at(0) == tags_to_write[0]);
@@ -31,7 +32,7 @@ TEST_CASE(write_tags) {
 }
 
 TEST_CASE(replace_tags) {
-	auto const fixture = xtag::Fixture{};
+	auto fixture = xtag::Fixture{};
 
 	auto tags_to_write = std::vector<std::string_view>{"foo", "bar"};
 	auto result = xtag::replace_tags(fixture.test_dir.get_path(), tags_to_write);
@@ -41,7 +42,7 @@ TEST_CASE(replace_tags) {
 	result = xtag::replace_tags(fixture.test_dir.get_path(), tags_to_write);
 	EXPECT(result);
 
-	auto tags = xtag::get_tags(fixture.test_dir.get_path());
+	auto tags = xtag::get_tags(fixture.tag_storage, fixture.test_dir.get_path());
 	ASSERT(tags);
 	ASSERT(tags->size() == 2);
 	EXPECT(tags->at(0) == tags_to_write[0]);
@@ -49,17 +50,17 @@ TEST_CASE(replace_tags) {
 }
 
 TEST_CASE(append_tags) {
-	auto const fixture = xtag::Fixture{};
+	auto fixture = xtag::Fixture{};
 
 	auto tags_to_write = std::vector<std::string_view>{"foo", "bar"};
 	auto result = xtag::replace_tags(fixture.test_dir.get_path(), tags_to_write);
 	EXPECT(result);
 
 	auto tags_to_append = std::vector<std::string_view>{"baz", "fubar"};
-	result = xtag::append_tags(fixture.test_dir.get_path(), tags_to_append);
+	result = xtag::append_tags(fixture.tag_storage, fixture.test_dir.get_path(), tags_to_append);
 	EXPECT(result);
 
-	auto tags = xtag::get_tags(fixture.test_dir.get_path());
+	auto tags = xtag::get_tags(fixture.tag_storage, fixture.test_dir.get_path());
 	ASSERT(tags);
 	ASSERT(tags->size() == 4);
 	EXPECT(tags->at(0) == tags_to_write[0]);
@@ -69,7 +70,7 @@ TEST_CASE(append_tags) {
 }
 
 TEST_CASE(erase_tags) {
-	auto const fixture = xtag::Fixture{};
+	auto fixture = xtag::Fixture{};
 
 	auto tags_to_write = std::vector<std::string_view>{"foo", "bar"};
 	auto result = xtag::replace_tags(fixture.test_dir.get_path(), tags_to_write);
@@ -78,7 +79,7 @@ TEST_CASE(erase_tags) {
 	result = xtag::erase_tags(fixture.test_dir.get_path());
 	EXPECT(result);
 
-	auto tags = xtag::get_tags(fixture.test_dir.get_path());
+	auto tags = xtag::get_tags(fixture.tag_storage, fixture.test_dir.get_path());
 	ASSERT(tags);
 	EXPECT(tags->empty());
 }

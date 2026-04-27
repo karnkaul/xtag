@@ -1,4 +1,5 @@
 #pragma once
+#include "klib/enum/bitops.hpp"
 #include "klib/enum/name.hpp"
 #include <cstdint>
 #include <string>
@@ -49,4 +50,16 @@ enum class ExitCode : std::int8_t {
 	default: return ExitCode::Failure;
 	}
 }
+
+enum class Filter : std::int8_t {
+	None = 0,
+	Directory = 1 << 0,
+	File = 1 << 1,
+};
+[[nodiscard]] constexpr auto enable_enum_bitops(Filter /*unused*/) { return true; }
+
+struct DirectoryParams {
+	Filter filter{Filter::Directory | Filter::File};
+	int depth{0};
+};
 } // namespace xtag
