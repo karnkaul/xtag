@@ -13,13 +13,15 @@ TEST_CASE(tag_serialize) {
 		"baz"sv,
 		"with space"sv,
 	};
-	auto const serialized = xtag::detail::serialize_tags(tags);
+	auto serialized = std::string{};
+	xtag::detail::serialize_tags_to(serialized, tags);
 	EXPECT(serialized == "foo|bar|baz|with space");
 }
 
 TEST_CASE(tag_deserialize) {
 	static constexpr auto serialized_v = std::string_view{"foo|bar|baz|with space"};
-	auto const tags = xtag::detail::deserialize_tags(serialized_v);
+	auto tags = std::vector<std::string_view>{};
+	xtag::detail::deserialize_tags_to(tags, serialized_v);
 	ASSERT(tags.size() == 4);
 	EXPECT(tags[0] == "foo");
 	EXPECT(tags[1] == "bar");
