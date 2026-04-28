@@ -64,6 +64,7 @@ constexpr auto tag_delimiter_v = '|';
 template <typename FuncT>
 void iterate_directory(fs::path const& directory, DirectoryParams const& params, FuncT const& per_entry, int const depth = 0) {
 	if (!fs::is_directory(directory)) { return; }
+	if ((params.filter & Filter::Directory) == Filter::Directory) { per_entry(directory); }
 	for (auto const& it : fs::directory_iterator{directory}) {
 		if (it.is_regular_file()) {
 			if ((params.filter & Filter::File) == Filter::File) { per_entry(it.path()); }
@@ -123,8 +124,11 @@ auto xattr::remove(klib::CString const path, klib::CString const name) -> Result
 	});
 }
 
-void detail::deserialize_tags_to(std::vector<std::string_view>& out, std::string_view const serialized) {
-	for (auto const tag : std::views::split(serialized, tag_delimiter_v)) { out.emplace_back(tag); }
+void detail::deserialize_tags_to(TagStorage& storage, std::vector<std::string_view>& out, std::string_view const serialized) {
+	for (auto const it : std::views::split(serialized, tag_delimiter_v)) {
+		auto const tag = std::string_view{it};
+		out.push_back(storage.insert_tag(std::string{tag}));
+	}
 }
 
 void detail::serialize_tags_to(std::string& out, std::span<std::string_view const> tags) {
@@ -143,7 +147,7 @@ auto TagStorage::insert_tag(std::string tag) -> std::string_view {
 auto Instance::get_tags(fs::path const& path) -> Result<std::vector<std::string_view>> {
 	return get_serialized(path).transform([&](std::string_view const serialized) {
 		auto ret = std::vector<std::string_view>{};
-		detail::deserialize_tags_to(ret, serialized);
+		detail::deserialize_tags_to(storage.tags, ret, serialized);
 		return ret;
 	});
 }
@@ -158,6 +162,7 @@ auto Instance::replace_tags(fs::path const& path, std::span<std::string_view con
 
 auto Instance::append_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
 	return get_serialized(path).and_then([&](std::string_view const current) {
+		// `m_buffers[0]` is in use (`current` points to it).
 		auto& combined = m_buffers[1];
 		combined.clear();
 
@@ -176,7 +181,7 @@ auto Instance::scan_tagged(fs::path const& directory, DirectoryParams const& par
 	auto ret = std::vector<TaggedEntry>{};
 	auto const per_entry = [&](fs::path path) {
 		auto tags = get_tags(path);
-		if (!tags) { return; }
+		if (!tags || tags->empty()) { return; }
 		ret.push_back(TaggedEntry{.path = std::move(path), .tags = std::move(*tags)});
 	};
 	iterate_directory(directory, params, per_entry);

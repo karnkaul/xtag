@@ -18,6 +18,8 @@ class TestDir {
 
 	// NOLINTNEXTLINE(modernize-use-nodiscard)
 	auto create_empty_file(fs::path const& subpath) const -> fs::path;
+	// NOLINTNEXTLINE(modernize-use-nodiscard)
+	auto create_directory(fs::path const& subpath) const -> fs::path;
 
   private:
 	fs::path m_path{};
