@@ -1,7 +1,7 @@
 #pragma once
 #include "xtag/result.hpp"
+#include "xtag/string_pool.hpp"
 #include "xtag/tag_storage.hpp"
-#include <array>
 #include <filesystem>
 #include <vector>
 
@@ -31,8 +31,6 @@ class Instance {
 	Storage storage{};
 
   private:
-	[[nodiscard]] auto get_serialized(fs::path const& path) -> Result<std::string_view>;
-
-	std::array<std::string, 2> m_buffers{};
+	StringPool m_strings{};
 };
 } // namespace xtag

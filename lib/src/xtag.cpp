@@ -1,10 +1,7 @@
 #include "detail/util.hpp"
 #include "klib/debug/assert.hpp"
-#include "klib/string/c_string.hpp"
 #include "xtag/instance.hpp"
-#include "xtag/result.hpp"
-#include "xtag/tag_storage.hpp"
-#include "xtag/types.hpp"
+#include "xtag/string_pool.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
 #include <filesystem>
@@ -76,6 +73,18 @@ void iterate_directory(fs::path const& directory, DirectoryParams const& params,
 		iterate_directory(it.path(), params, per_entry, depth + 1);
 	}
 }
+
+[[nodiscard]] auto get_serialized(StringPool::Scope const& string_pool, fs::path const& path) -> Result<std::string_view> {
+	auto& serialized = string_pool.acquire();
+	auto result = xattr::get_to(serialized, path.generic_string().c_str(), tag_name_v);
+	if (!result) {
+		switch (result.error().type) {
+		case Error::Type::NoData: return {};
+		default: return std::unexpected{std::move(result.error())};
+		}
+	}
+	return serialized;
+}
 } // namespace
 
 auto xattr::get_to(std::string& buffer, klib::CString const path, klib::CString const name) -> Result<std::string_view> {
@@ -144,8 +153,42 @@ auto TagStorage::insert_tag(std::string tag) -> std::string_view {
 	return *it;
 }
 
+StringPool::Scope::Scope(StringPool& pool) : m_pool(pool) {
+	if (m_pool.m_bound_to_scope) { return; }
+	m_pool.m_bound_to_scope = m_active = true;
+}
+
+StringPool::Scope::~Scope() {
+	if (!m_active) { return; }
+	release_all();
+}
+
+auto StringPool::Scope::acquire() const -> std::string& {
+	auto& ret = [&] -> std::string& {
+		if (m_pool.m_index >= m_pool.m_buffer.size()) {
+			m_pool.m_index = m_pool.m_buffer.size() + 1;
+			return m_pool.m_buffer.emplace_back();
+		}
+		return m_pool.m_buffer.at(m_pool.m_index++);
+	}();
+	ret.clear();
+	return ret;
+}
+
+void StringPool::Scope::release_all() {
+	m_pool.m_index = 0;
+	m_pool.m_bound_to_scope = false;
+}
+
+void StringPool::clear() {
+	KLIB_ASSERT(!m_bound_to_scope);
+	m_buffer.clear();
+	m_index = 0;
+}
+
 auto Instance::get_tags(fs::path const& path) -> Result<std::vector<std::string_view>> {
-	return get_serialized(path).transform([&](std::string_view const serialized) {
+	auto const strings = StringPool::Scope{m_strings};
+	return get_serialized(strings, path).transform([&](std::string_view const serialized) {
 		auto ret = std::vector<std::string_view>{};
 		detail::deserialize_tags_to(storage.tags, ret, serialized);
 		return ret;
@@ -153,19 +196,16 @@ auto Instance::get_tags(fs::path const& path) -> Result<std::vector<std::string_
 }
 
 auto Instance::replace_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
-	auto& serialized = m_buffers[0];
-	serialized.clear();
-
+	auto const strings = StringPool::Scope{m_strings};
+	auto& serialized = strings.acquire();
 	detail::serialize_tags_to(serialized, tags);
 	return xattr::set(path.generic_string().c_str(), tag_name_v, serialized);
 }
 
 auto Instance::append_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
-	return get_serialized(path).and_then([&](std::string_view const current) {
-		// `m_buffers[0]` is in use (`current` points to it).
-		auto& combined = m_buffers[1];
-		combined.clear();
-
+	auto const strings = StringPool::Scope{m_strings};
+	return get_serialized(strings, path).and_then([&](std::string_view const current) {
+		auto& combined = strings.acquire();
 		combined.append(current);
 		detail::serialize_tags_to(combined, tags);
 		return xattr::set(path.generic_string().c_str(), tag_name_v, combined);
@@ -186,20 +226,6 @@ auto Instance::scan_tagged(fs::path const& directory, DirectoryParams const& par
 	};
 	iterate_directory(directory, params, per_entry);
 	return ret;
-}
-
-auto Instance::get_serialized(fs::path const& path) -> Result<std::string_view> {
-	auto& serialized = m_buffers[0];
-	serialized.clear();
-
-	auto result = xattr::get_to(serialized, path.generic_string().c_str(), tag_name_v);
-	if (!result) {
-		switch (result.error().type) {
-		case Error::Type::NoData: return {};
-		default: return std::unexpected{std::move(result.error())};
-		}
-	}
-	return serialized;
 }
 } // namespace xtag
 
