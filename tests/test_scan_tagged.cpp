@@ -1,7 +1,10 @@
 #include "common/fixture.hpp"
 #include "klib/unit_test/unit_test.hpp"
+#include <algorithm>
 
 namespace {
+using namespace std::string_view_literals;
+
 TEST_CASE(scan_tagged) {
 	auto fixture = xtag::Fixture{};
 
@@ -20,19 +23,24 @@ TEST_CASE(scan_tagged) {
 	auto const tags_c = std::vector<std::string_view>{"fubar"};
 	fixture.instance.replace_tags(file_c, tags_c);
 
-	auto const params = xtag::ScanParams{.depth = 10};
-	auto const tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), params);
+	static constexpr auto sort_pred = [](xtag::TaggedEntry const& a, xtag::TaggedEntry const& b) { return a.path < b.path; };
+
+	auto params = xtag::ScanParams{.depth = 10};
+	auto tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), params);
 	ASSERT(tagged.size() == 3);
-	for (auto const& entry : tagged) {
-		if (entry.path == dir_a) {
-			EXPECT(entry.tags == tags_a);
-		} else if (entry.path == dir_b) {
-			EXPECT(entry.tags == tags_b);
-		} else if (entry.path == file_c) {
-			EXPECT(entry.tags == tags_c);
-		} else {
-			EXPECT(false);
-		}
-	}
+	std::ranges::sort(tagged, sort_pred);
+	EXPECT(tagged[0].tags == tags_a);
+	EXPECT(tagged[1].tags == tags_b);
+	EXPECT(tagged[2].tags == tags_c);
+
+	static constexpr auto tag_filter_v = std::array{
+		"bar"sv,
+	};
+	params.tag_filter = tag_filter_v;
+	tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), params);
+	ASSERT(tagged.size() == 2);
+	std::ranges::sort(tagged, sort_pred);
+	EXPECT(tagged[0].tags == tags_a);
+	EXPECT(tagged[1].tags == tags_b);
 }
 } // namespace

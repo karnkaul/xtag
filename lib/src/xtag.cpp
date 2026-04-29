@@ -61,10 +61,10 @@ constexpr auto tag_delimiter_v = '|';
 template <typename FuncT>
 void iterate_directory(fs::path const& directory, ScanParams const& params, FuncT const& per_entry, int const depth = 0) {
 	if (!fs::is_directory(directory)) { return; }
-	if ((params.filter & Filter::Directory) == Filter::Directory) { per_entry(directory); }
+	if ((params.entry_type & EntryType::Directory) == EntryType::Directory) { per_entry(directory); }
 	for (auto const& it : fs::directory_iterator{directory}) {
 		if (it.is_regular_file()) {
-			if ((params.filter & Filter::File) == Filter::File) { per_entry(it.path()); }
+			if ((params.entry_type & EntryType::File) == EntryType::File) { per_entry(it.path()); }
 			continue;
 		}
 
@@ -84,6 +84,12 @@ void iterate_directory(fs::path const& directory, ScanParams const& params, Func
 		}
 	}
 	return serialized;
+}
+
+[[nodiscard]] constexpr auto passes_filter(std::span<std::string_view const> tags, std::span<std::string_view const> filter) -> bool {
+	if (filter.empty()) { return !tags.empty(); }
+	auto const pred = [filter](std::string_view const tag) { return std::ranges::find(filter, tag) != filter.end(); };
+	return std::ranges::any_of(tags, pred);
 }
 } // namespace
 
@@ -221,7 +227,7 @@ auto Instance::scan_tagged(fs::path const& directory, ScanParams const& params) 
 	auto ret = std::vector<TaggedEntry>{};
 	auto const per_entry = [&](fs::path path) {
 		auto tags = get_tags(path);
-		if (!tags || tags->empty()) { return; }
+		if (!tags || !passes_filter(*tags, params.tag_filter)) { return; }
 		ret.push_back(TaggedEntry{.path = std::move(path), .tags = std::move(*tags)});
 	};
 	iterate_directory(directory, params, per_entry);

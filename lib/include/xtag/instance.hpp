@@ -2,17 +2,9 @@
 #include "xtag/result.hpp"
 #include "xtag/string_pool.hpp"
 #include "xtag/tag_storage.hpp"
-#include <filesystem>
 #include <vector>
 
 namespace xtag {
-namespace fs = std::filesystem;
-
-struct TaggedEntry {
-	fs::path path{};
-	std::vector<std::string_view> tags{};
-};
-
 class Instance {
   public:
 	struct Storage {

@@ -2,9 +2,12 @@
 #include "klib/enum/bitops.hpp"
 #include "klib/enum/name.hpp"
 #include <cstdint>
+#include <filesystem>
 #include <string>
 
 namespace xtag {
+namespace fs = std::filesystem;
+
 struct Error {
 	enum class Type : std::int8_t {
 		Unknown,
@@ -51,15 +54,21 @@ enum class ExitCode : std::int8_t {
 	}
 }
 
-enum class Filter : std::int8_t {
+enum class EntryType : std::int8_t {
 	None = 0,
 	Directory = 1 << 0,
 	File = 1 << 1,
 };
-[[nodiscard]] constexpr auto enable_enum_bitops(Filter /*unused*/) { return true; }
+[[nodiscard]] constexpr auto enable_enum_bitops(EntryType /*unused*/) { return true; }
+
+struct TaggedEntry {
+	fs::path path{};
+	std::vector<std::string_view> tags{};
+};
 
 struct ScanParams {
-	Filter filter{Filter::Directory | Filter::File};
+	std::span<std::string_view const> tag_filter{};
+	EntryType entry_type{EntryType::Directory | EntryType::File};
 	int depth{0};
 };
 } // namespace xtag
