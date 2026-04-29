@@ -18,5 +18,6 @@ class App {
 	}
 
 	std::vector<std::unique_ptr<Command>> m_commands{};
+	Instance m_instance{};
 };
 } // namespace xtag::cli

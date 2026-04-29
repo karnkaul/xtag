@@ -1,6 +1,7 @@
 #pragma once
 #include "clap/parameter.hpp"
 #include "klib/base_types.hpp"
+#include "xtag/instance.hpp"
 #include "xtag/types.hpp"
 #include <print>
 #include <string_view>
@@ -14,7 +15,7 @@ class Command : public klib::Polymorphic, public klib::Pinned {
 
 	virtual auto get_parameters() -> std::vector<clap::Parameter> { return {}; }
 
-	[[nodiscard]] virtual auto execute() -> ExitCode = 0;
+	[[nodiscard]] virtual auto execute(Instance& instance) -> ExitCode = 0;
 
   protected:
 	[[nodiscard]] static auto handle_error(Error const& error) -> ExitCode {

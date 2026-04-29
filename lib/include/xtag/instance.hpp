@@ -11,7 +11,7 @@ class Instance {
 		TagStorage tags{};
 	};
 
-	[[nodiscard]] auto get_tags(fs::path const& path) -> Result<std::vector<std::string_view>>;
+	[[nodiscard]] auto get_tags(fs::path const& path) -> Result<TaggedEntry>;
 
 	auto replace_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void>;
 	auto append_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void>;

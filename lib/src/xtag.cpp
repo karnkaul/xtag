@@ -1,4 +1,5 @@
 #include "detail/util.hpp"
+#include "klib/cli/text_table.hpp"
 #include "klib/debug/assert.hpp"
 #include "xtag/instance.hpp"
 #include "xtag/string_pool.hpp"
@@ -192,11 +193,11 @@ void StringPool::clear() {
 	m_index = 0;
 }
 
-auto Instance::get_tags(fs::path const& path) -> Result<std::vector<std::string_view>> {
+auto Instance::get_tags(fs::path const& path) -> Result<TaggedEntry> {
 	auto const strings = StringPool::Scope{m_strings};
 	return get_serialized(strings, path).transform([&](std::string_view const serialized) {
-		auto ret = std::vector<std::string_view>{};
-		detail::deserialize_tags_to(storage.tags, ret, serialized);
+		auto ret = TaggedEntry{.path = fs::canonical(path)};
+		detail::deserialize_tags_to(storage.tags, ret.tags, serialized);
 		return ret;
 	});
 }
@@ -225,10 +226,10 @@ auto Instance::erase_tags(fs::path const& path) -> Result<void> {
 
 auto Instance::scan_tagged(fs::path const& directory, ScanParams const& params) -> std::vector<TaggedEntry> {
 	auto ret = std::vector<TaggedEntry>{};
-	auto const per_entry = [&](fs::path path) {
-		auto tags = get_tags(path);
-		if (!tags || !passes_filter(*tags, params.tag_filter)) { return; }
-		ret.push_back(TaggedEntry{.path = std::move(path), .tags = std::move(*tags)});
+	auto const per_entry = [&](fs::path const& path) {
+		auto entry = get_tags(path);
+		if (!entry || !passes_filter(entry->tags, params.tag_filter)) { return; }
+		ret.push_back(std::move(*entry));
 	};
 	iterate_directory(directory, params, per_entry);
 	return ret;
@@ -242,4 +243,18 @@ auto xtag::format_error(Error::Type const type, std::string_view const message) 
 auto xtag::to_error(Error::Type const type, std::string_view const message) -> std::unexpected<Error> {
 	auto msg = format_error(type, message);
 	return std::unexpected{Error{.type = type, .message = std::move(msg)}};
+}
+
+auto xtag::format_table(std::span<TaggedEntry const> entries) -> std::string {
+	if (entries.empty()) { return {}; }
+
+	auto table = klib::TextTable::Builder{}.add_column("path").add_column("tags").build();
+	for (auto const& entry : entries) {
+		auto row = std::vector<std::string>{};
+		row.push_back(entry.path.generic_string());
+		detail::serialize_tags_to(row.emplace_back(), entry.tags);
+		table.push_row(std::move(row));
+	}
+
+	return table.serialize();
 }

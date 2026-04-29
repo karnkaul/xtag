@@ -71,4 +71,6 @@ struct ScanParams {
 	EntryType entry_type{EntryType::Directory | EntryType::File};
 	int depth{0};
 };
+
+[[nodiscard]] auto format_table(std::span<TaggedEntry const> entries) -> std::string;
 } // namespace xtag

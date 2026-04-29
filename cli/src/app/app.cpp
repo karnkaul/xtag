@@ -1,16 +1,21 @@
 #include "app/app.hpp"
-#include "clap/parameter.hpp"
 #include "clap/parser.hpp"
 #include "clap/spec.hpp"
 #include "command/command.hpp"
-#include "klib/string/c_string.hpp"
+#include "command/erase_tags.hpp"
+#include "command/get_tags.hpp"
+#include "command/set_tags.hpp"
 #include "log.hpp"
 #include "xtag/build_version.hpp"
-#include "xtag/panic.hpp"
 #include <cstdlib>
 
 namespace xtag::cli {
 auto App::run(int argc, char const* const* argv) -> int {
+	add_command<command::GetTags>();
+	add_command<command::ReplaceTags>();
+	add_command<command::AppendTags>();
+	add_command<command::EraseTags>();
+
 	auto const parse_result = parse_args(argc, argv);
 	if (parse_result.should_early_exit()) { return parse_result.return_code(); }
 
@@ -25,7 +30,7 @@ auto App::run(int argc, char const* const* argv) -> int {
 
 	auto& command = **it;
 
-	return int(command.execute());
+	return int(command.execute(m_instance));
 }
 
 auto App::parse_args(int argc, char const* const* argv) -> clap::Result {
@@ -37,7 +42,7 @@ auto App::parse_args(int argc, char const* const* argv) -> clap::Result {
 		.program =
 			{
 				.version = build_version_str,
-				.description = "video file formatter",
+				.description = "xattr tags manipulator",
 			},
 	};
 	spec.commands.reserve(m_commands.size());
