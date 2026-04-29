@@ -58,7 +58,7 @@ enum class Filter : std::int8_t {
 };
 [[nodiscard]] constexpr auto enable_enum_bitops(Filter /*unused*/) { return true; }
 
-struct DirectoryParams {
+struct ScanParams {
 	Filter filter{Filter::Directory | Filter::File};
 	int depth{0};
 };

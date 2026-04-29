@@ -59,7 +59,7 @@ constexpr auto tag_name_v = klib::CString{"user.xtag"};
 constexpr auto tag_delimiter_v = '|';
 
 template <typename FuncT>
-void iterate_directory(fs::path const& directory, DirectoryParams const& params, FuncT const& per_entry, int const depth = 0) {
+void iterate_directory(fs::path const& directory, ScanParams const& params, FuncT const& per_entry, int const depth = 0) {
 	if (!fs::is_directory(directory)) { return; }
 	if ((params.filter & Filter::Directory) == Filter::Directory) { per_entry(directory); }
 	for (auto const& it : fs::directory_iterator{directory}) {
@@ -217,7 +217,7 @@ auto Instance::erase_tags(fs::path const& path) -> Result<void> {
 	return xattr::remove(str.c_str(), tag_name_v);
 }
 
-auto Instance::scan_tagged(fs::path const& directory, DirectoryParams const& params) -> std::vector<TaggedEntry> {
+auto Instance::scan_tagged(fs::path const& directory, ScanParams const& params) -> std::vector<TaggedEntry> {
 	auto ret = std::vector<TaggedEntry>{};
 	auto const per_entry = [&](fs::path path) {
 		auto tags = get_tags(path);

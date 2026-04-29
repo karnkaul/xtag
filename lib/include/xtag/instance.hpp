@@ -26,7 +26,7 @@ class Instance {
 
 	static auto erase_tags(fs::path const& path) -> Result<void>;
 
-	[[nodiscard]] auto scan_tagged(fs::path const& directory, DirectoryParams const& params = {}) -> std::vector<TaggedEntry>;
+	[[nodiscard]] auto scan_tagged(fs::path const& directory, ScanParams const& params = {}) -> std::vector<TaggedEntry>;
 
 	Storage storage{};
 

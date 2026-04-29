@@ -20,7 +20,7 @@ TEST_CASE(scan_tagged) {
 	auto const tags_c = std::vector<std::string_view>{"fubar"};
 	fixture.instance.replace_tags(file_c, tags_c);
 
-	auto const params = xtag::DirectoryParams{.depth = 10};
+	auto const params = xtag::ScanParams{.depth = 10};
 	auto const tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), params);
 	ASSERT(tagged.size() == 3);
 	for (auto const& entry : tagged) {
