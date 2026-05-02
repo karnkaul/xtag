@@ -2,7 +2,6 @@
 #include "klib/cli/text_table.hpp"
 #include "klib/debug/assert.hpp"
 #include "xtag/instance.hpp"
-#include "xtag/string_pool.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
 #include <filesystem>
@@ -75,16 +74,15 @@ void iterate_directory(fs::path const& directory, ScanParams const& params, Func
 	}
 }
 
-[[nodiscard]] auto get_serialized(StringPool::Scope const& string_pool, fs::path const& path) -> Result<std::string_view> {
-	auto& serialized = string_pool.acquire();
-	auto result = xattr::get_to(serialized, path.generic_string().c_str(), tag_name_v);
+[[nodiscard]] auto get_serialized_to(std::string& out, fs::path const& path) -> Result<void> {
+	auto result = xattr::get_to(out, path.generic_string().c_str(), tag_name_v);
 	if (!result) {
 		switch (result.error().type) {
 		case Error::Type::NoData: return {};
 		default: return std::unexpected{std::move(result.error())};
 		}
 	}
-	return serialized;
+	return {};
 }
 
 [[nodiscard]] constexpr auto passes_filter(std::span<std::string_view const> tags, std::span<std::string_view const> filter) -> bool {
@@ -160,42 +158,9 @@ auto TagStorage::insert_tag(std::string tag) -> std::string_view {
 	return *it;
 }
 
-StringPool::Scope::Scope(StringPool& pool) : m_pool(pool) {
-	if (m_pool.m_bound_to_scope) { return; }
-	m_pool.m_bound_to_scope = m_active = true;
-}
-
-StringPool::Scope::~Scope() {
-	if (!m_active) { return; }
-	release_all();
-}
-
-auto StringPool::Scope::acquire() const -> std::string& {
-	auto& ret = [&] -> std::string& {
-		if (m_pool.m_index >= m_pool.m_buffer.size()) {
-			m_pool.m_index = m_pool.m_buffer.size() + 1;
-			return m_pool.m_buffer.emplace_back();
-		}
-		return m_pool.m_buffer.at(m_pool.m_index++);
-	}();
-	ret.clear();
-	return ret;
-}
-
-void StringPool::Scope::release_all() {
-	m_pool.m_index = 0;
-	m_pool.m_bound_to_scope = false;
-}
-
-void StringPool::clear() {
-	KLIB_ASSERT(!m_bound_to_scope);
-	m_buffer.clear();
-	m_index = 0;
-}
-
 auto Instance::get_tags(fs::path const& path) -> Result<TaggedEntry> {
-	auto const strings = StringPool::Scope{m_strings};
-	return get_serialized(strings, path).transform([&](std::string_view const serialized) {
+	auto& serialized = wipe_buffer();
+	return get_serialized_to(serialized, path).transform([&] {
 		auto ret = TaggedEntry{.path = fs::canonical(path)};
 		detail::deserialize_tags_to(storage.tags, ret.tags, serialized);
 		return ret;
@@ -203,19 +168,17 @@ auto Instance::get_tags(fs::path const& path) -> Result<TaggedEntry> {
 }
 
 auto Instance::replace_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
-	auto const strings = StringPool::Scope{m_strings};
-	auto& serialized = strings.acquire();
+	if (tags.empty()) { return erase_tags(path); }
+	auto& serialized = wipe_buffer();
 	detail::serialize_tags_to(serialized, tags);
 	return xattr::set(path.generic_string().c_str(), tag_name_v, serialized);
 }
 
 auto Instance::append_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void> {
-	auto const strings = StringPool::Scope{m_strings};
-	return get_serialized(strings, path).and_then([&](std::string_view const current) {
-		auto& combined = strings.acquire();
-		combined.append(current);
-		detail::serialize_tags_to(combined, tags);
-		return xattr::set(path.generic_string().c_str(), tag_name_v, combined);
+	auto& serialized = wipe_buffer();
+	return get_serialized_to(serialized, path).and_then([&] {
+		detail::serialize_tags_to(serialized, tags);
+		return xattr::set(path.generic_string().c_str(), tag_name_v, serialized);
 	});
 }
 
@@ -233,6 +196,11 @@ auto Instance::scan_tagged(fs::path const& directory, ScanParams const& params) 
 	};
 	iterate_directory(directory, params, per_entry);
 	return ret;
+}
+
+auto Instance::wipe_buffer() -> std::string& {
+	m_buffer.clear();
+	return m_buffer;
 }
 } // namespace xtag
 

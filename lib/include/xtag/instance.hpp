@@ -1,6 +1,5 @@
 #pragma once
 #include "xtag/result.hpp"
-#include "xtag/string_pool.hpp"
 #include "xtag/tag_storage.hpp"
 #include <vector>
 
@@ -23,6 +22,8 @@ class Instance {
 	Storage storage{};
 
   private:
-	StringPool m_strings{};
+	[[nodiscard]] auto wipe_buffer() -> std::string&;
+
+	std::string m_buffer{};
 };
 } // namespace xtag
