@@ -2,19 +2,21 @@
 #include "clap/parser.hpp"
 #include "clap/spec.hpp"
 #include "command/command.hpp"
-#include "command/erase_tags.hpp"
-#include "command/get_tags.hpp"
-#include "command/set_tags.hpp"
+#include "command/erase.hpp"
+#include "command/list.hpp"
+#include "command/scan.hpp"
+#include "command/set.hpp"
 #include "log.hpp"
 #include "xtag/build_version.hpp"
 #include <cstdlib>
 
 namespace xtag::cli {
 auto App::run(int argc, char const* const* argv) -> int {
-	add_command<command::GetTags>();
-	add_command<command::ReplaceTags>();
-	add_command<command::AppendTags>();
-	add_command<command::EraseTags>();
+	add_command<command::List>();
+	add_command<command::Replace>();
+	add_command<command::Append>();
+	add_command<command::Erase>();
+	add_command<command::Scan>();
 
 	auto const parse_result = parse_args(argc, argv);
 	if (parse_result.should_early_exit()) { return parse_result.return_code(); }

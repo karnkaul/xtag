@@ -1,11 +1,11 @@
-#include "command/set_tags.hpp"
+#include "command/set.hpp"
 
 namespace xtag::cli::command {
 auto SetTags::get_name() const -> std::string_view {
 	switch (m_type) {
 	default:
-	case Type::Replace: return "replace-tags";
-	case Type::Append: return "append-tags";
+	case Type::Replace: return "replace";
+	case Type::Append: return "append";
 	}
 }
 

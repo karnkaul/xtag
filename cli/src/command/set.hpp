@@ -18,13 +18,13 @@ class SetTags : public Command {
 	std::vector<std::string_view> m_tags{};
 };
 
-class ReplaceTags : public SetTags {
+class Replace : public SetTags {
   public:
-	explicit ReplaceTags() : SetTags(Type::Replace) {}
+	explicit Replace() : SetTags(Type::Replace) {}
 };
 
-class AppendTags : public SetTags {
+class Append : public SetTags {
   public:
-	explicit AppendTags() : SetTags(Type::Append) {}
+	explicit Append() : SetTags(Type::Append) {}
 };
 } // namespace xtag::cli::command

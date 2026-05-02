@@ -1,13 +1,13 @@
-#include "command/get_tags.hpp"
+#include "command/list.hpp"
 
 namespace xtag::cli::command {
-auto GetTags::get_parameters() -> std::vector<clap::Parameter> {
+auto List::get_parameters() -> std::vector<clap::Parameter> {
 	return {
 		clap::positional_optional(m_path, "PATH", "path (default=.)"),
 	};
 }
 
-auto GetTags::execute(Instance& instance) -> ExitCode {
+auto List::execute(Instance& instance) -> ExitCode {
 	auto const result = instance.get_tags(m_path);
 	if (!result) { return handle_error(result.error()); }
 
