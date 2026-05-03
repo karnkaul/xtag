@@ -1,4 +1,5 @@
 #include "command/list.hpp"
+#include "xtag/format.hpp"
 
 namespace xtag::cli::command {
 auto List::get_parameters() -> std::vector<clap::Parameter> {

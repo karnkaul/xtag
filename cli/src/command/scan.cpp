@@ -1,4 +1,5 @@
 #include "command/scan.hpp"
+#include "xtag/format.hpp"
 
 namespace xtag::cli::command {
 auto Scan::get_parameters() -> std::vector<clap::Parameter> {
@@ -11,19 +12,26 @@ auto Scan::get_parameters() -> std::vector<clap::Parameter> {
 }
 
 auto Scan::execute(Instance& instance) -> ExitCode {
-	auto params = ScanParams{
+	auto scan_params = ScanParams{
 		.tag_filter = m_tags,
 		.depth = m_depth,
 	};
 
 	if (m_type == "d") {
-		params.entry_type = EntryType::Directory;
+		scan_params.entry_type = EntryType::Directory;
 	} else if (m_type == "f") {
-		params.entry_type = EntryType::File;
+		scan_params.entry_type = EntryType::File;
 	}
 
-	auto const result = instance.scan_tagged(m_path, params);
-	auto const table = format_table(result);
+	auto const root = fs::absolute(m_path);
+	auto const entries = instance.scan_tagged(root, scan_params);
+
+	auto format_params = FormatParams{
+		.path_header = "relative path",
+		.transform_path = [&](fs::path const& path) { return fs::relative(path, root); },
+	};
+
+	auto const table = format_table(entries, std::move(format_params));
 	std::println("{}", table);
 	return ExitCode::Success;
 }

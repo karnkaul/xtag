@@ -1,6 +1,7 @@
 #include "detail/util.hpp"
 #include "klib/cli/text_table.hpp"
 #include "klib/debug/assert.hpp"
+#include "xtag/format.hpp"
 #include "xtag/instance.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
@@ -213,13 +214,17 @@ auto xtag::to_error(Error::Type const type, std::string_view const message) -> s
 	return std::unexpected{Error{.type = type, .message = std::move(msg)}};
 }
 
-auto xtag::format_table(std::span<TaggedEntry const> entries) -> std::string {
+auto xtag::format_table(std::span<TaggedEntry const> entries, FormatParams params) -> std::string {
 	if (entries.empty()) { return {}; }
 
-	auto table = klib::TextTable::Builder{}.add_column("path").add_column("tags").build();
+	if (!params.transform_path) {
+		params.transform_path = [](fs::path const& path) { return path; };
+	}
+
+	auto table = klib::TextTable::Builder{}.add_column(std::string{params.path_header}).add_column(std::string{params.tags_header}).build();
 	for (auto const& entry : entries) {
 		auto row = std::vector<std::string>{};
-		row.push_back(entry.path.generic_string());
+		row.push_back(params.transform_path(entry.path));
 		detail::serialize_tags_to(row.emplace_back(), entry.tags);
 		table.push_row(std::move(row));
 	}
