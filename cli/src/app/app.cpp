@@ -39,7 +39,7 @@ auto App::parse_args(int argc, char const* const* argv) -> clap::Result {
 	auto spec = clap::spec::Commands{
 		.options =
 			{
-
+				clap::named_option(m_instance.custom_attribute_name, "a,attr-name", "custom attribute name"),
 			},
 		.program =
 			{
