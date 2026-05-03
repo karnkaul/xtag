@@ -7,8 +7,8 @@ auto Erase::get_parameters() -> std::vector<clap::Parameter> {
 	};
 }
 
-auto Erase::execute([[maybe_unused]] Instance& instance) -> ExitCode {
-	auto const result = Instance::erase_tags(m_path);
+auto Erase::execute(Instance& instance) -> ExitCode {
+	auto const result = instance.erase_tags(m_path);
 	if (!result) { return handle_error(result.error()); }
 
 	std::println("tags erased successfully");

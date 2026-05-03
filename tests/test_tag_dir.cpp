@@ -77,7 +77,7 @@ TEST_CASE(erase_tags) {
 	auto result = fixture.instance.replace_tags(fixture.test_dir.get_path(), tags_to_write);
 	EXPECT(result);
 
-	result = xtag::Instance::erase_tags(fixture.test_dir.get_path());
+	result = fixture.instance.erase_tags(fixture.test_dir.get_path());
 	EXPECT(result);
 
 	auto entry = fixture.instance.get_tags(fixture.test_dir.get_path());

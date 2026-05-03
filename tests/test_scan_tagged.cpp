@@ -14,14 +14,14 @@ TEST_CASE(scan_tagged) {
 	auto const file_d = fixture.test_dir.create_empty_file("dir_a/dir_b/file_d");
 
 	auto const tags_a = std::vector<std::string_view>{"foo", "bar"};
-	fixture.instance.replace_tags(dir_a, tags_a);
+	[[maybe_unused]] auto res = fixture.instance.replace_tags(dir_a, tags_a);
 
 	auto tags_b = tags_a;
 	tags_b.emplace_back("baz");
-	fixture.instance.replace_tags(dir_b, tags_b);
+	res = fixture.instance.replace_tags(dir_b, tags_b);
 
 	auto const tags_c = std::vector<std::string_view>{"fubar"};
-	fixture.instance.replace_tags(file_c, tags_c);
+	res = fixture.instance.replace_tags(file_c, tags_c);
 
 	static constexpr auto sort_pred = [](xtag::TaggedEntry const& a, xtag::TaggedEntry const& b) { return a.path < b.path; };
 
