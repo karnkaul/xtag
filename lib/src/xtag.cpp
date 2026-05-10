@@ -261,11 +261,16 @@ auto xtag::format_table(std::span<Entry const> entries, FormatParams params) -> 
 		params.transform_path = [](fs::path const& path) { return path; };
 	}
 
-	auto table = klib::TextTable::Builder{}.add_column(std::string{params.path_header}).add_column(std::string{params.tags_header}).build();
-	for (auto const& entry : entries) {
+	auto table = klib::TextTable::Builder{}
+					 .add_column("#", klib::TextTable::Align::Right)
+					 .add_column(std::string{params.path_header})
+					 .add_column(std::string{params.tags_header})
+					 .build();
+	for (auto const [index, entry] : std::views::enumerate(entries)) {
 		std::string_view const type_str = entry.type == EntryType::Directory ? "d" : "f";
 
 		auto row = std::vector<std::string>{};
+		row.push_back(std::format("{}", index + 1));
 
 		auto& path_str = row.emplace_back();
 		path_str = std::format("[{}] {}", type_str, params.transform_path(entry.path).generic_string());

@@ -1,5 +1,6 @@
 #include "command/scan.hpp"
 #include "xtag/format.hpp"
+#include <algorithm>
 
 namespace xtag::cli::command {
 auto Scan::get_parameters() -> std::vector<clap::Parameter> {
@@ -24,7 +25,8 @@ auto Scan::execute(Instance& instance) -> ExitCode {
 	}
 
 	auto const root = fs::absolute(m_path);
-	auto const entries = instance.scan_tagged(root, info);
+	auto entries = instance.scan_tagged(root, info);
+	std::ranges::sort(entries, [](Entry const& a, Entry const& b) { return a.path < b.path; });
 
 	auto format_params = FormatParams{
 		.path_header = "relative path",
