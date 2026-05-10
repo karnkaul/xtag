@@ -18,7 +18,7 @@ TEST_CASE(write_tags) {
 	auto fixture = xtag::Fixture{};
 	auto entry = fixture.instance.get_tags(fixture.test_dir.get_path());
 	ASSERT(entry);
-	EXPECT(entry->tags.empty());
+	EXPECT(entry->scan_tags.empty());
 
 	auto tags_to_write = std::vector<std::string_view>{"foo", "bar"};
 
@@ -27,9 +27,9 @@ TEST_CASE(write_tags) {
 
 	entry = fixture.instance.get_tags(fixture.test_dir.get_path());
 	ASSERT(entry);
-	ASSERT(entry->tags.size() == 2);
-	EXPECT(entry->tags.at(0) == tags_to_write[0]);
-	EXPECT(entry->tags.at(1) == tags_to_write[1]);
+	ASSERT(entry->scan_tags.size() == 2);
+	EXPECT(entry->scan_tags.at(0).value == tags_to_write[0]);
+	EXPECT(entry->scan_tags.at(1).value == tags_to_write[1]);
 }
 
 TEST_CASE(replace_tags) {
@@ -45,9 +45,9 @@ TEST_CASE(replace_tags) {
 
 	auto entry = fixture.instance.get_tags(fixture.test_dir.get_path());
 	ASSERT(entry);
-	ASSERT(entry->tags.size() == 2);
-	EXPECT(entry->tags.at(0) == tags_to_write[0]);
-	EXPECT(entry->tags.at(1) == tags_to_write[1]);
+	ASSERT(entry->scan_tags.size() == 2);
+	EXPECT(entry->scan_tags.at(0).value == tags_to_write[0]);
+	EXPECT(entry->scan_tags.at(1).value == tags_to_write[1]);
 }
 
 TEST_CASE(append_tags) {
@@ -63,11 +63,11 @@ TEST_CASE(append_tags) {
 
 	auto entry = fixture.instance.get_tags(fixture.test_dir.get_path());
 	ASSERT(entry);
-	ASSERT(entry->tags.size() == 4);
-	EXPECT(entry->tags.at(0) == tags_to_write[0]);
-	EXPECT(entry->tags.at(1) == tags_to_write[1]);
-	EXPECT(entry->tags.at(2) == tags_to_append[0]);
-	EXPECT(entry->tags.at(3) == tags_to_append[1]);
+	ASSERT(entry->scan_tags.size() == 4);
+	EXPECT(entry->scan_tags.at(0).value == tags_to_write[0]);
+	EXPECT(entry->scan_tags.at(1).value == tags_to_write[1]);
+	EXPECT(entry->scan_tags.at(2).value == tags_to_append[0]);
+	EXPECT(entry->scan_tags.at(3).value == tags_to_append[1]);
 }
 
 TEST_CASE(erase_tags) {
@@ -82,6 +82,6 @@ TEST_CASE(erase_tags) {
 
 	auto entry = fixture.instance.get_tags(fixture.test_dir.get_path());
 	ASSERT(entry);
-	EXPECT(entry->tags.empty());
+	EXPECT(entry->scan_tags.empty());
 }
 } // namespace

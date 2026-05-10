@@ -9,5 +9,5 @@ struct FormatParams {
 	std::move_only_function<fs::path(fs::path const&)> transform_path{};
 };
 
-[[nodiscard]] auto format_table(std::span<TaggedEntry const> entries, FormatParams params = {}) -> std::string;
+[[nodiscard]] auto format_table(std::span<Entry const> entries, FormatParams params = {}) -> std::string;
 } // namespace xtag

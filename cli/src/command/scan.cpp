@@ -5,26 +5,26 @@ namespace xtag::cli::command {
 auto Scan::get_parameters() -> std::vector<clap::Parameter> {
 	return {
 		clap::named_option(m_depth, "d,depth", "iteration depth (default: 10)"),
-		clap::named_option(m_type, "t,type", "entry type (d|f)"),
+		clap::named_option(m_entry_type, "t,type", "entry type (d|f)"),
 		clap::positional_required(m_path, "PATH"),
 		clap::positional_list(m_tags, "TAGS"),
 	};
 }
 
 auto Scan::execute(Instance& instance) -> ExitCode {
-	auto scan_params = ScanParams{
-		.tag_filter = m_tags,
+	auto info = ScanInfo{
+		.filter = ScanFilter{.tags = m_tags},
 		.depth = m_depth,
 	};
 
-	if (m_type == "d") {
-		scan_params.entry_type = EntryType::Directory;
-	} else if (m_type == "f") {
-		scan_params.entry_type = EntryType::File;
+	if (m_entry_type == "d") {
+		info.filter.entry_type = EntryType::Directory;
+	} else if (m_entry_type == "f") {
+		info.filter.entry_type = EntryType::File;
 	}
 
 	auto const root = fs::absolute(m_path);
-	auto const entries = instance.scan_tagged(root, scan_params);
+	auto const entries = instance.scan_tagged(root, info);
 
 	auto format_params = FormatParams{
 		.path_header = "relative path",

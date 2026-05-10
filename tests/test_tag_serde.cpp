@@ -22,7 +22,8 @@ TEST_CASE(tag_deserialize) {
 	static constexpr auto serialized_v = std::string_view{"foo,bar,baz,with space"};
 	auto tags = std::vector<std::string_view>{};
 	auto storage = xtag::StringSet{};
-	xtag::detail::deserialize_tags_to(storage, tags, serialized_v);
+	auto const per_tag = [&](std::string_view const tag) { tags.push_back(tag); };
+	xtag::detail::deserialize_tags(storage, serialized_v, per_tag);
 	ASSERT(tags.size() == 4);
 	EXPECT(tags[0] == "foo");
 	EXPECT(tags[1] == "bar");

@@ -54,6 +54,22 @@ enum class ExitCode : std::int8_t {
 	}
 }
 
+enum class TagType : std::int8_t {
+	None = 0,
+	Primary = 1 << 0,
+	Inherited = 1 << 1,
+};
+[[nodiscard]] constexpr auto enable_enum_bitops(TagType /*unused*/) { return true; }
+
+struct ScanTag {
+	using Type = TagType;
+
+	auto operator==(ScanTag const&) const -> bool = default;
+
+	std::string_view value{};
+	Type type{};
+};
+
 enum class EntryType : std::int8_t {
 	None = 0,
 	Directory = 1 << 0,
@@ -61,14 +77,11 @@ enum class EntryType : std::int8_t {
 };
 [[nodiscard]] constexpr auto enable_enum_bitops(EntryType /*unused*/) { return true; }
 
-struct TaggedEntry {
-	fs::path path{};
-	std::vector<std::string_view> tags{};
-};
+struct Entry {
+	using Type = EntryType;
 
-struct ScanParams {
-	std::span<std::string_view const> tag_filter{};
-	EntryType entry_type{EntryType::Directory | EntryType::File};
-	int depth{0};
+	fs::path path{};
+	std::vector<ScanTag> scan_tags{};
+	Type type{};
 };
 } // namespace xtag

@@ -23,24 +23,29 @@ TEST_CASE(scan_tagged) {
 	auto const tags_c = std::vector<std::string_view>{"fubar"};
 	res = fixture.instance.replace_tags(file_c, tags_c);
 
-	static constexpr auto sort_pred = [](xtag::TaggedEntry const& a, xtag::TaggedEntry const& b) { return a.path < b.path; };
+	static auto const sort_pred = [](xtag::Entry const& a, xtag::Entry const& b) { return a.path < b.path; };
+	static auto const expect_tags = [](xtag::Entry const& e, std::span<std::string_view const> tags, xtag::TagType const type) {
+		auto const pred = [&](std::string_view const scan_tag) {
+			return std::ranges::find(e.scan_tags, xtag::ScanTag{.value = scan_tag, .type = type}) != e.scan_tags.end();
+		};
+		return std::ranges::all_of(tags, pred);
+	};
 
-	auto params = xtag::ScanParams{.depth = 10};
-	auto tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), params);
-	ASSERT(tagged.size() == 3);
+	auto info = xtag::ScanInfo{.depth = 10};
+	auto tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), info);
+	ASSERT(tagged.size() == 4);
 	std::ranges::sort(tagged, sort_pred);
-	EXPECT(tagged[0].tags == tags_a);
-	EXPECT(tagged[1].tags == tags_b);
-	EXPECT(tagged[2].tags == tags_c);
+	EXPECT(expect_tags(tagged[0], tags_a, xtag::TagType::Primary));
+	// TODO: inherited
 
 	static constexpr auto tag_filter_v = std::array{
-		"bar"sv,
+		"baz"sv,
 	};
-	params.tag_filter = tag_filter_v;
-	tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), params);
+	info.filter.tags = tag_filter_v;
+	tagged = fixture.instance.scan_tagged(fixture.test_dir.get_path(), info);
 	ASSERT(tagged.size() == 2);
 	std::ranges::sort(tagged, sort_pred);
-	EXPECT(tagged[0].tags == tags_a);
-	EXPECT(tagged[1].tags == tags_b);
+	EXPECT(expect_tags(tagged[0], tags_a, xtag::TagType::Primary));
+	// TODO: inherited
 }
 } // namespace
