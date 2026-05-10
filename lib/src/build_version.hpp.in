@@ -1,0 +1,12 @@
+#pragma once
+#include "klib/version.hpp"
+
+namespace xtag {
+constexpr auto build_version_v = klib::Version{
+	.major = @PROJECT_VERSION_MAJOR@,
+	.minor = @PROJECT_VERSION_MINOR@,
+	.patch = @PROJECT_VERSION_PATCH@,
+};
+
+inline auto const build_version_str = std::format("{}", build_version_v);
+} // namespace xtag
