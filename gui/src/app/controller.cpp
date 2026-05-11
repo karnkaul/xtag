@@ -3,6 +3,14 @@
 #include <imgui.h>
 
 namespace xtag::gui {
+namespace {
+[[nodiscard]] auto to_scan_info(ScanData const& data) -> ScanInfo {
+	auto ret = ScanInfo{.depth = data.depth};
+	ret.filter.entry_type = data.entry_type;
+	return ret;
+}
+} // namespace
+
 void Controller::initialize(Services const& services) {
 	Object::initialize(services);
 

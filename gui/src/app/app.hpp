@@ -3,6 +3,7 @@
 #include "clap/result.hpp"
 #include "gvdi/app.hpp"
 #include "service/services.hpp"
+#include "service/shared_model.hpp"
 #include "service/signals.hpp"
 #include "xtag/instance.hpp"
 
@@ -21,6 +22,7 @@ class App : public gvdi::App {
 	Services m_services{};
 	Signals m_signals{};
 	Instance m_instance{};
+	SharedModel m_shared_model{};
 
 	Controller m_controller{};
 };

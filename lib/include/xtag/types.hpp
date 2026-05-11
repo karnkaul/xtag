@@ -60,6 +60,11 @@ enum class TagType : std::int8_t {
 	Inherited = 1 << 1,
 };
 [[nodiscard]] constexpr auto enable_enum_bitops(TagType /*unused*/) { return true; }
+inline auto const tag_type_name_map = klib::EnumNameMap<TagType>{
+	{TagType::None, "None"},
+	{TagType::Primary, "Primary"},
+	{TagType::Inherited, "Inherited"},
+};
 
 struct ScanTag {
 	using Type = TagType;
@@ -76,6 +81,11 @@ enum class EntryType : std::int8_t {
 	File = 1 << 1,
 };
 [[nodiscard]] constexpr auto enable_enum_bitops(EntryType /*unused*/) { return true; }
+inline auto const entry_type_name_map = klib::EnumNameMap<EntryType>{
+	{EntryType::None, "None"},
+	{EntryType::Directory, "Directory"},
+	{EntryType::File, "File"},
+};
 
 struct Entry {
 	using Type = EntryType;
