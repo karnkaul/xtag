@@ -12,14 +12,13 @@ class App : public gvdi::App {
 	[[nodiscard]] auto run(int argc, char const* const* argv) -> int;
 
   private:
-	[[nodiscard]] auto parse_args(int argc, char const* const* argv) -> clap::Result;
-
-	void initialize();
-
+	void on_path_drop(std::span<char const* const> paths) final;
 	void update() final;
 
+	[[nodiscard]] auto parse_args(int argc, char const* const* argv) -> clap::Result;
+	void initialize();
+
 	Services m_services{};
-	std::shared_ptr<Slot> m_slot{make_slot()};
 	Signals m_signals{};
 	Instance m_instance{};
 

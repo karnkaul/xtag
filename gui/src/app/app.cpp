@@ -17,6 +17,16 @@ auto App::run(int argc, char const* const* argv) -> int {
 	return EXIT_SUCCESS;
 }
 
+void App::on_path_drop(std::span<char const* const> paths) {
+	if (paths.empty()) { return; }
+	m_controller.on_drop(paths.front());
+}
+
+void App::update() {
+	m_controller.update();
+	if (m_controller.get_state() == Controller::State::Finished) { set_should_close_window(true); }
+}
+
 auto App::parse_args(int argc, char const* const* argv) -> clap::Result {
 	auto spec = clap::spec::Parameters{
 		.parameters =
@@ -34,13 +44,9 @@ auto App::parse_args(int argc, char const* const* argv) -> clap::Result {
 	return parser.parse_main(argc, argv);
 }
 
-void App::update() { m_controller.update(); }
-
 void App::initialize() {
 	m_services.attach(&m_signals);
 	m_services.attach(&m_instance);
-
-	m_signals.shutdown.attach_to(m_slot, [this] { set_should_close_window(true); });
 
 	m_controller.initialize(m_services);
 }

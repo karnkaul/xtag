@@ -1,4 +1,5 @@
 #include "app/controller.hpp"
+#include "app/log.hpp"
 #include <imgui.h>
 
 namespace xtag::gui {
@@ -7,6 +8,10 @@ void Controller::initialize(Services const& services) {
 
 	m_main_menu.initialize(services);
 	m_main_window.initialize(services);
+
+	m_signals->shutdown.attach_to(m_slot, [this] { shutdown(); });
+
+	m_state = State::Running;
 }
 
 void Controller::update() {
@@ -23,5 +28,16 @@ void Controller::update() {
 	m_main_window.update();
 
 	ImGui::End();
+}
+
+void Controller::on_drop(fs::path const& path) {
+	if (!fs::is_directory(path)) { return; }
+
+	log.debug("TODO: handle directory drop");
+}
+
+void Controller::shutdown() {
+	// TODO: cancel async work.
+	m_state = State::Finished;
 }
 } // namespace xtag::gui
