@@ -2,6 +2,7 @@
 #include "klib/debug/assert.hpp"
 #include "xtag/format.hpp"
 #include "xtag/instance.hpp"
+#include "xtag/util.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
 #include <filesystem>
@@ -129,14 +130,7 @@ class Scanner {
 };
 
 void format_file_to(std::string& out, Entry const& file, fs::path const& parent = {}) {
-	auto tags = std::string{};
-	for (auto const& scan_tag : file.tags) {
-		if (scan_tag.type == TagType::Primary) {
-			detail::join_to(tags, scan_tag.value, ", ");
-		} else {
-			detail::join_to(tags, std::format("*{}", scan_tag.value), ", ");
-		}
-	}
+	auto tags = util::join_tags(file.tags);
 	auto const path = [&] {
 		if (parent.empty()) { return file.path.generic_string(); }
 		return fs::relative(file.path, parent).generic_string();
@@ -241,10 +235,48 @@ void detail::deserialize_tags(StringSet& out_set, std::string_view const seriali
 	}
 }
 
-void detail::join_to(std::string& out, std::string_view const item, std::string_view const delimiter) {
+void util::join_to(std::string& out, std::string_view const item, std::string_view const delimiter) {
 	if (item.empty()) { return; }
 	if (!out.empty()) { out.append(delimiter); }
 	out.append(item);
+}
+
+auto util::join(std::string_view const item, std::string_view const delimiter) {
+	auto ret = std::string{};
+	join_to(ret, item, delimiter);
+	return ret;
+}
+
+auto util::as_string(ScanTag const& scan_tag, std::string_view const inherited_prefix) -> std::string {
+	if (scan_tag.type == TagType::Primary || inherited_prefix.empty()) { return std::string{scan_tag.value}; }
+	return std::format("{}{}", inherited_prefix, scan_tag.value);
+}
+
+auto util::as_strings(std::span<ScanTag const> scan_tags, std::string_view const inherited_prefix) -> std::vector<std::string> {
+	auto ret = std::vector<std::string>{};
+	for (auto const& scan_tag : scan_tags) { ret.push_back(as_string(scan_tag, inherited_prefix)); }
+	return ret;
+}
+
+void util::join_tags_to(std::string& out, std::span<ScanTag const> tags, JoinParams const& params) {
+	auto count = 0;
+	for (auto const& scan_tag : tags) {
+		if ((params.type_filter & scan_tag.type) == TagType::None) { continue; }
+
+		if (params.max_count > 0 && count > params.max_count) {
+			join_to(out, params.overflow, params.delimiter);
+			return;
+		}
+
+		++count;
+		join_to(out, as_string(scan_tag, params.inherited_prefix), params.delimiter);
+	}
+}
+
+auto util::join_tags(std::span<ScanTag const> tags, JoinParams const& params) -> std::string {
+	auto ret = std::string{};
+	join_tags_to(ret, tags, params);
+	return ret;
 }
 
 void Entry::sort_recursive() {

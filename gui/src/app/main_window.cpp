@@ -1,41 +1,136 @@
 #include "app/main_window.hpp"
+#include "app/log.hpp"
+#include "klib/debug/assert.hpp"
 #include "klib/string/c_string.hpp"
 #include <imgui.h>
 
 namespace xtag::gui {
 namespace {
-template <klib::EnumT T>
-void flag_to_checkbox(klib::CString const label, T& mask, T const enumeration) {
-	auto enabled = (mask & enumeration) == enumeration;
-	if (ImGui::Checkbox(label.c_str(), &enabled)) {
-		if (enabled) {
-			mask |= enumeration;
-		} else {
-			mask &= ~enumeration;
-		}
+void populate_data(Entry& entry) {
+	entry.custom_payload = EntryData::from(entry);
+	for (auto& subentry : entry.subentries) { populate_data(subentry); }
+}
+
+[[nodiscard]] auto to_model(klib::Ptr<Entry const> selected) -> EntryModel {
+	if (!selected) { return {}; }
+
+	auto const* data = std::any_cast<EntryData>(&selected->custom_payload);
+	if (!data) { return {}; }
+
+	return data->to_model();
+}
+
+constexpr auto tag_viewer_label_v = klib::CString{"tag_viewer"};
+
+void update_tag_viewer(EntryModel const& entry) {
+	if (!ImGui::BeginPopup(tag_viewer_label_v.c_str())) { return; }
+	if (ImGui::BeginListBox("tags", {200.0f, 0.0f})) {
+		for (auto const& tag : entry.all_tags) { ImGui::TextUnformatted(tag.c_str()); }
+		ImGui::EndListBox();
 	}
+	ImGui::EndPopup();
 }
 } // namespace
 
 void MainWindow::update() {
-	update_model();
+	if (!m_file_browser) {
+		ImGui::TextUnformatted("drag a directory here to begin");
+		return;
+	}
+
+	auto const entry = to_model(m_file_browser->get_selected());
+
+	if (ImGui::BeginTable("controls", 2, ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders)) {
+		ImGui::TableNextRow();
+
+		ImGui::TableNextColumn();
+		update_controls();
+
+		ImGui::TableNextColumn();
+		update_inspector(entry);
+
+		ImGui::EndTable();
+	}
+
+	update_navigation();
+	if (m_open_tag_viewer) {
+		m_open_tag_viewer = false;
+		ImGui::OpenPopup(tag_viewer_label_v.c_str());
+	}
+	update_tag_viewer(entry);
 
 	if (ImGui::BeginChild("list", {}, ImGuiChildFlags_Borders)) {
-		ImGui::TextUnformatted("child window 1");
-		ImGui::TextUnformatted("child window 2");
+		update_browser();
 		ImGui::EndChild();
 	}
 }
 
-void MainWindow::update_model() {
-	ImGui::TextUnformatted("entry type");
-	for (auto const& [type, name] : entry_type_name_map.as_span()) {
-		if (type == EntryType::None) { continue; }
-		ImGui::SameLine();
-		flag_to_checkbox(name.data(), m_shared_model->scan_data.entry_type, type);
+void MainWindow::refresh_root_directory(Entry directory) {
+	populate_data(directory);
+	m_root_directory = fs::canonical(directory.path).generic_string();
+	if (!m_file_browser) {
+		m_file_browser.emplace(std::move(directory));
+	} else {
+		m_file_browser->refresh(std::move(directory));
+	}
+	log.debug("Directory loaded successfully: '{}'", m_root_directory);
+}
+
+void MainWindow::update_controls() {
+	ImGui::Checkbox("include files", &scan_data.include_files);
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(60.0f);
+	ImGui::DragInt("scan depth", &scan_data.depth, 1.0f, 0, 100);
+
+	if (ImGui::Button("refresh")) { m_signals->refresh_root_directory.dispatch(); }
+}
+
+void MainWindow::update_navigation() {
+	KLIB_ASSERT(m_file_browser);
+
+	ImGui::TextUnformatted(m_root_directory.c_str());
+	ImGui::SameLine();
+	ImGui::TextUnformatted(m_file_browser->get_pwd().relative_path.c_str());
+
+	ImGui::BeginDisabled(!m_file_browser->can_navigate_up());
+	if (ImGui::Button("up")) { m_file_browser->navigate_up(); }
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("root")) { m_file_browser->navigate_to_root(); }
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(150.0f);
+	ImGui::InputText("filter", m_filename_filter.data(), m_filename_filter.size());
+}
+
+void MainWindow::update_inspector(EntryModel const& entry) {
+	ImGui::TextUnformatted(entry.inspect_filename.c_str());
+	ImGui::TextUnformatted(entry.short_tags.c_str());
+
+	if (ImGui::Button("view tags")) { m_open_tag_viewer = true; }
+}
+
+void MainWindow::update_browser() {
+	KLIB_ASSERT(m_file_browser);
+
+	auto navigate_to_selected = false;
+
+	auto const update_entry = [&, selected = m_file_browser->get_selected()](klib::CString const filename, Entry const& entry) {
+		if (ImGui::Selectable(filename.c_str(), &entry == selected)) { m_file_browser->set_selected(entry); }
+		if (entry.type == EntryType::Directory && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) { navigate_to_selected = true; }
+	};
+
+	auto const& pwd = m_file_browser->get_pwd();
+	update_entry(".", *pwd.entry);
+
+	std::string_view const filename_filter = m_filename_filter.data();
+	auto const is_filtered = [&](klib::CString const tree_filename) { return !filename_filter.empty() && !tree_filename.as_view().contains(filename_filter); };
+
+	for (auto const& subentry : pwd.entry->subentries) {
+		auto const entry_model = to_model(&subentry);
+		if (is_filtered(entry_model.tree_filename)) { continue; }
+		update_entry(entry_model.tree_filename, subentry);
 	}
 
-	ImGui::SetNextItemWidth(100.0f);
-	ImGui::DragInt("scan depth", &m_shared_model->scan_data.depth, 1.0f, 0, 100);
+	if (navigate_to_selected) { m_file_browser->navigate_to_selected(); }
 }
 } // namespace xtag::gui

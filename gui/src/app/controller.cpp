@@ -21,6 +21,7 @@ void Controller::initialize(Services const& services) {
 	m_main_window.initialize(services);
 
 	m_signals->shutdown.attach_to(m_slot, [this] { shutdown(); });
+	m_signals->refresh_root_directory.attach_to(m_slot, [this] { refresh_root_directory(); });
 
 	m_state = State::Running;
 }
@@ -41,14 +42,36 @@ void Controller::update() {
 	ImGui::End();
 }
 
-void Controller::on_drop(fs::path const& path) {
-	if (!fs::is_directory(path)) { return; }
-
-	log.debug("TODO: handle directory drop");
+void Controller::on_drop(fs::path const& root) {
+	if (!fs::is_directory(root)) { return; }
+	m_main_window.scan_data.root = root;
+	refresh_root_directory();
 }
 
 void Controller::shutdown() {
 	// TODO: cancel async work.
 	m_state = State::Finished;
+}
+
+void Controller::refresh_root_directory() {
+	if (m_main_window.scan_data.root.empty()) {
+		log.warn("attempt to refresh empty root directory");
+		return;
+	}
+
+	if (!fs::is_directory(m_main_window.scan_data.root)) {
+		log.warn("'{}' is not a directory, resetting", m_main_window.scan_data.root.generic_string());
+		m_main_window.scan_data.root.clear();
+		return;
+	}
+
+	auto const scan_info = to_scan_info(m_main_window.scan_data);
+	auto result = m_instance->scan_directory(m_main_window.scan_data.root, scan_info);
+	if (!result) {
+		log.error("TODO: failed to load directory: '{}'", m_main_window.scan_data.root.generic_string());
+		return;
+	}
+
+	m_main_window.refresh_root_directory(std::move(*result));
 }
 } // namespace xtag::gui

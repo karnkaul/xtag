@@ -1,9 +1,12 @@
 #pragma once
-#include "xtag/types.hpp"
+#include <filesystem>
 
 namespace xtag::gui {
+namespace fs = std::filesystem;
+
 struct ScanData {
-	EntryType entry_type{EntryType::Directory};
+	fs::path root{};
+	bool include_files{false};
 	int depth{3};
 };
 } // namespace xtag::gui

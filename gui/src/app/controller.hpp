@@ -19,6 +19,7 @@ class Controller : public Object {
 
   private:
 	void shutdown();
+	void refresh_root_directory();
 
 	std::shared_ptr<Slot> m_slot{make_slot()};
 

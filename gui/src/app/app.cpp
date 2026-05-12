@@ -47,7 +47,6 @@ auto App::parse_args(int argc, char const* const* argv) -> clap::Result {
 void App::initialize() {
 	m_services.attach(&m_signals);
 	m_services.attach(&m_instance);
-	m_services.attach(&m_shared_model);
 
 	m_controller.initialize(m_services);
 }

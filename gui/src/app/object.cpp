@@ -4,6 +4,5 @@ namespace xtag::gui {
 void Object::initialize(Services const& services) {
 	m_services = &services;
 	m_signals = &services.get<Signals>();
-	m_shared_model = &services.get<SharedModel>();
 }
 } // namespace xtag::gui
