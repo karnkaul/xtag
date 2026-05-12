@@ -6,13 +6,16 @@ namespace xtag::gui {
 namespace {
 [[nodiscard]] auto to_scan_info(ScanData const& data) -> ScanInfo {
 	auto ret = ScanInfo{.depth = data.depth};
-	ret.filter.entry_type = data.entry_type;
+	ret.filter.include_files = data.include_files;
+	ret.filter.tag_type |= TagType::Untagged;
 	return ret;
 }
 } // namespace
 
 void Controller::initialize(Services const& services) {
 	Object::initialize(services);
+
+	m_instance = &services.get<Instance>();
 
 	m_main_menu.initialize(services);
 	m_main_window.initialize(services);

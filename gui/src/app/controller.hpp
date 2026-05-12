@@ -23,7 +23,6 @@ class Controller : public Object {
 	std::shared_ptr<Slot> m_slot{make_slot()};
 
 	klib::Ptr<Instance> m_instance{};
-	klib::Ptr<Services const> m_services{};
 
 	MainMenu m_main_menu{};
 	MainWindow m_main_window{};

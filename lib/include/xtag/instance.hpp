@@ -2,13 +2,12 @@
 #include "klib/string/c_string.hpp"
 #include "xtag/result.hpp"
 #include "xtag/string_set.hpp"
-#include <vector>
 
 namespace xtag {
 struct ScanFilter {
 	std::span<std::string_view const> tags{};
-	EntryType entry_type{EntryType::Directory | EntryType::File};
 	TagType tag_type{TagType::Primary | TagType::Inherited};
+	bool include_files{true};
 };
 
 struct ScanInfo {
@@ -31,7 +30,7 @@ class Instance {
 
 	auto erase_tags(fs::path const& path) const -> Result<void>;
 
-	[[nodiscard]] auto scan_tagged(fs::path const& directory, ScanInfo const& info = {}) -> std::vector<Entry>;
+	[[nodiscard]] auto scan_directory(fs::path const& directory, ScanInfo const& info = {}) -> Result<Entry>;
 
 	[[nodiscard]] auto get_attribute_name() const -> klib::CString;
 	[[nodiscard]] auto get_tag_storage() const -> StringSet const& { return m_tag_storage; }
@@ -40,8 +39,6 @@ class Instance {
 	std::string custom_attribute_name{};
 
   private:
-	class Scanner;
-
 	[[nodiscard]] auto wipe_buffer() -> std::string&;
 
 	[[nodiscard]] auto get_serialized_to(std::string& out, fs::path const& path) const -> Result<void>;

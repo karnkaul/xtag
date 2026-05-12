@@ -58,12 +58,14 @@ enum class TagType : std::int8_t {
 	None = 0,
 	Primary = 1 << 0,
 	Inherited = 1 << 1,
+	Untagged = 1 << 2,
 };
 [[nodiscard]] constexpr auto enable_enum_bitops(TagType /*unused*/) { return true; }
 inline auto const tag_type_name_map = klib::EnumNameMap<TagType>{
 	{TagType::None, "None"},
 	{TagType::Primary, "Primary"},
 	{TagType::Inherited, "Inherited"},
+	{TagType::Untagged, "Untagged"},
 };
 
 struct ScanTag {
@@ -73,6 +75,13 @@ struct ScanTag {
 
 	std::string_view value{};
 	Type type{};
+};
+
+struct Tag {
+	auto operator==(Tag const&) const -> bool = default;
+
+	std::string_view value{};
+	bool inherited{};
 };
 
 enum class EntryType : std::int8_t {
@@ -90,8 +99,11 @@ inline auto const entry_type_name_map = klib::EnumNameMap<EntryType>{
 struct Entry {
 	using Type = EntryType;
 
-	fs::path path{};
-	std::vector<ScanTag> scan_tags{};
+	void sort_recursive();
+
 	Type type{};
+	fs::path path{};
+	std::vector<ScanTag> tags{};
+	std::vector<Entry> subentries{};
 };
 } // namespace xtag
