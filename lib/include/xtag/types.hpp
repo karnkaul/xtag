@@ -1,6 +1,7 @@
 #pragma once
 #include "klib/enum/bitops.hpp"
 #include "klib/enum/name.hpp"
+#include <any>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -105,5 +106,6 @@ struct Entry {
 	fs::path path{};
 	std::vector<ScanTag> tags{};
 	std::vector<Entry> subentries{};
+	std::any custom_payload{};
 };
 } // namespace xtag
