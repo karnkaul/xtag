@@ -39,20 +39,22 @@ TEST_CASE(scan_directory) {
 
 	result->sort_recursive();
 
-	ASSERT(result->subentries.size() == 2);
+	ASSERT(result->subentries.size() == 1);
 	auto const& res_dir_a = result->subentries[0];
 	EXPECT(res_dir_a.type == xtag::EntryType::Directory);
 	EXPECT(expect_tags(res_dir_a.tags, tags_a, {}));
+	ASSERT(res_dir_a.subentries.size() == 2);
+
+	auto const& res_dir_b = res_dir_a.subentries[0];
+	EXPECT(res_dir_b.type == xtag::EntryType::Directory);
+	EXPECT(res_dir_b.path == fs::absolute(dir_b));
+	EXPECT(expect_tags(res_dir_b.tags, tags_b, tags_a));
+
 	auto const& res_file_c = res_dir_a.subentries[1];
 	EXPECT(res_file_c.type == xtag::EntryType::File);
 	EXPECT(res_file_c.path == fs::absolute(file_c));
 	EXPECT(expect_tags(res_file_c.tags, tags_c, tags_a));
 
-	ASSERT(res_dir_a.subentries.size() == 1);
-	auto const& res_dir_b = res_dir_a.subentries[0];
-	EXPECT(res_dir_b.type == xtag::EntryType::Directory);
-	EXPECT(res_dir_b.path == fs::absolute(dir_b));
-	EXPECT(expect_tags(res_dir_b.tags, tags_b, tags_a));
 	ASSERT(res_dir_b.subentries.size() == 1);
 	auto const& res_file_d = res_dir_b.subentries[0];
 	EXPECT(res_file_d.type == xtag::EntryType::File);
