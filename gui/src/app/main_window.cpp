@@ -92,11 +92,11 @@ void MainWindow::update_navigation() {
 	ImGui::SameLine();
 	ImGui::TextUnformatted(m_file_browser->get_pwd().relative_path.c_str());
 
-	ImGui::BeginDisabled(!m_file_browser->can_navigate_up());
-	if (ImGui::Button("up")) { m_file_browser->navigate_up(); }
+	ImGui::BeginDisabled(!m_file_browser->has_parent());
+	if (ImGui::Button("up")) { m_file_browser->open_parent(); }
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	if (ImGui::Button("root")) { m_file_browser->navigate_to_root(); }
+	if (ImGui::Button("root")) { m_file_browser->open_root(); }
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(150.0f);
 	ImGui::InputText("filter", m_filename_filter.data(), m_filename_filter.size());
@@ -112,15 +112,25 @@ void MainWindow::update_inspector(EntryModel const& entry) {
 void MainWindow::update_browser() {
 	KLIB_ASSERT(m_file_browser);
 
-	auto navigate_to_selected = false;
+	enum class Target : std::int8_t { None, Selected, Parent };
 
-	auto const update_entry = [&, selected = m_file_browser->get_selected()](klib::CString const filename, Entry const& entry) {
-		if (ImGui::Selectable(filename.c_str(), &entry == selected)) { m_file_browser->set_selected(entry); }
-		if (entry.type == EntryType::Directory && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) { navigate_to_selected = true; }
+	static auto const item_double_clicked = [] { return ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left); };
+
+	auto target = Target::None;
+	auto const selected = m_file_browser->get_selected();
+
+	auto const update_subentry = [&](klib::CString const filename, Entry const& subentry) {
+		if (ImGui::Selectable(filename.c_str(), &subentry == selected)) { m_file_browser->select_subentry(subentry); }
+		if (subentry.type == EntryType::Directory && item_double_clicked()) { target = Target::Selected; }
 	};
 
+	if (m_file_browser->has_parent()) {
+		if (ImGui::Selectable("..", selected == m_file_browser->get_parent())) { m_file_browser->select_parent(); }
+		if (item_double_clicked()) { target = Target::Parent; }
+	}
+
 	auto const& pwd = m_file_browser->get_pwd();
-	update_entry(".", *pwd.entry);
+	if (ImGui::Selectable(".", selected == pwd.entry)) { m_file_browser->select_pwd(); }
 
 	std::string_view const filename_filter = m_filename_filter.data();
 	auto const is_filtered = [&](klib::CString const tree_filename) { return !filename_filter.empty() && !tree_filename.as_view().contains(filename_filter); };
@@ -128,9 +138,14 @@ void MainWindow::update_browser() {
 	for (auto const& subentry : pwd.entry->subentries) {
 		auto const entry_model = to_model(&subentry);
 		if (is_filtered(entry_model.tree_filename)) { continue; }
-		update_entry(entry_model.tree_filename, subentry);
+		update_subentry(entry_model.tree_filename, subentry);
 	}
 
-	if (navigate_to_selected) { m_file_browser->navigate_to_selected(); }
+	switch (target) {
+	default:
+	case Target::None: break;
+	case Target::Selected: m_file_browser->open_selected(); break;
+	case Target::Parent: m_file_browser->open_parent(); break;
+	}
 }
 } // namespace xtag::gui

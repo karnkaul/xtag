@@ -1,5 +1,5 @@
 #include "command/scan.hpp"
-#include "xtag/format.hpp"
+#include "xtag/formatter.hpp"
 
 namespace xtag::cli::command {
 auto Scan::get_parameters() -> std::vector<clap::Parameter> {
@@ -22,7 +22,7 @@ auto Scan::execute(Instance& instance) -> ExitCode {
 	if (!result) { return handle_error(result.error()); }
 
 	result->sort_recursive();
-	auto const tree = format_tree(*result);
+	auto const tree = Formatter{}.format_tree(*result);
 	std::println("{}", tree);
 	return ExitCode::Success;
 }

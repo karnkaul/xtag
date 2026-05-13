@@ -1,5 +1,5 @@
 #include "command/list.hpp"
-#include "xtag/format.hpp"
+#include "xtag/formatter.hpp"
 
 namespace xtag::cli::command {
 auto List::get_parameters() -> std::vector<clap::Parameter> {
@@ -12,7 +12,7 @@ auto List::execute(Instance& instance) -> ExitCode {
 	auto const result = instance.get_tags(m_path);
 	if (!result) { return handle_error(result.error()); }
 
-	auto const table = format_file(*result);
+	auto const table = Formatter{}.format_file(*result);
 	std::println("{}", table);
 	return ExitCode::Success;
 }

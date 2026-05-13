@@ -8,53 +8,69 @@ auto FileBrowser::get_pwd() const -> Directory {
 	};
 }
 
+auto FileBrowser::has_parent() const -> bool { return !m_stack.empty(); }
+
+auto FileBrowser::get_parent() const -> klib::Ptr<Entry const> {
+	if (m_stack.empty()) { return nullptr; }
+	if (m_stack.size() == 1) { return &get_root(); }
+	return m_stack.at(m_stack.size() - 2);
+}
+
 void FileBrowser::refresh(Entry root) {
 	m_root = std::move(root);
 	m_root.sort_recursive();
-	m_selected = {};
-	m_stack.clear();
-	refresh_data();
+	open_root();
 }
 
-auto FileBrowser::set_selected(Entry const& entry) -> bool {
-	auto const& pwd = get_pwd();
-	if (&entry == pwd.entry) {
-		m_selected = pwd.entry;
-		return true;
-	}
-
-	auto const it = std::ranges::find_if(pwd.entry->subentries, [&entry](Entry const& e) { return e.path == entry.path; });
-	if (it == pwd.entry->subentries.end()) { return false; }
-
-	m_selected = &*it;
-	return true;
+auto FileBrowser::select_subentry(Entry const& entry) -> bool {
+	auto const target = find_subentry(entry.path);
+	if (!target) { return false; }
+	return on_select(*target);
 }
 
-auto FileBrowser::can_navigate_up() const -> bool { return !m_stack.empty(); }
+void FileBrowser::select_pwd() { m_selected = get_pwd().entry; }
 
-void FileBrowser::navigate_up() {
-	if (!can_navigate_up()) { return; }
-	m_selected = {};
+auto FileBrowser::select_parent() -> bool {
+	if (!has_parent()) { return false; }
+	return on_select(*get_parent());
+}
+
+auto FileBrowser::open_parent() -> bool {
+	if (!has_parent()) { return false; }
 	m_stack.pop_back();
-	refresh_data();
+	return on_pwd_changed();
 }
 
-auto FileBrowser::navigate_to_selected() -> bool {
+auto FileBrowser::open_selected() -> bool {
 	auto const selected = get_selected();
 	if (!selected || selected->type != EntryType::Directory) { return false; }
 
 	if (selected == get_pwd().entry) { return true; } // already here.
 
-	m_stack.push_back(m_selected);
-	m_selected = {};
-	refresh_data();
+	m_stack.push_back(selected);
+	return on_pwd_changed();
+}
+
+void FileBrowser::open_root() {
+	m_stack.clear();
+	on_pwd_changed();
+}
+
+auto FileBrowser::find_subentry(fs::path const& path) const -> klib::Ptr<Entry const> {
+	auto const& pwd = get_pwd();
+	auto const it = std::ranges::find_if(pwd.entry->subentries, [&path](Entry const& e) { return e.path == path; });
+	if (it == pwd.entry->subentries.end()) { return nullptr; }
+	return &*it;
+}
+
+auto FileBrowser::on_pwd_changed() -> bool {
+	auto const& pwd = get_pwd();
+	m_pwd_rel_path = fs::relative(pwd.entry->path, get_root().path).generic_string();
+	return on_select(*pwd.entry);
+}
+
+auto FileBrowser::on_select(Entry const& entry) -> bool {
+	m_selected = &entry;
 	return true;
 }
-
-void FileBrowser::navigate_to_root() {
-	m_stack.clear();
-	m_selected = {};
-}
-
-void FileBrowser::refresh_data() { m_pwd_rel_path = fs::relative(get_pwd().entry->path, get_root().path).generic_string(); }
 } // namespace xtag::gui

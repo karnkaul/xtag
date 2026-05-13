@@ -1,4 +1,5 @@
 #pragma once
+#include "klib/base_types.hpp"
 #include "klib/ptr.hpp"
 #include "klib/string/c_string.hpp"
 #include "xtag/types.hpp"
@@ -9,27 +10,33 @@ struct Directory {
 	klib::CString relative_path{};
 };
 
-class FileBrowser {
+class FileBrowser : public klib::Pinned {
   public:
 	explicit FileBrowser(Entry root) { refresh(std::move(root)); }
 
 	[[nodiscard]] auto get_root() const -> Entry const& { return m_root; }
 	[[nodiscard]] auto get_pwd() const -> Directory;
 
+	[[nodiscard]] auto get_selected() const -> klib::Ptr<Entry const> { return m_selected; }
+
+	[[nodiscard]] auto has_parent() const -> bool;
+	[[nodiscard]] auto get_parent() const -> klib::Ptr<Entry const>;
+
 	void refresh(Entry root);
 
-	[[nodiscard]] auto get_selected() const -> klib::Ptr<Entry const> { return m_selected; }
-	auto set_selected(Entry const& entry) -> bool;
+	auto select_subentry(Entry const& subentry) -> bool;
+	void select_pwd();
+	auto select_parent() -> bool;
 
-	[[nodiscard]] auto can_navigate_up() const -> bool;
-	void navigate_up();
-
-	auto navigate_to_selected() -> bool;
-
-	void navigate_to_root();
+	auto open_parent() -> bool;
+	auto open_selected() -> bool;
+	void open_root();
 
   private:
-	void refresh_data();
+	[[nodiscard]] auto find_subentry(fs::path const& path) const -> klib::Ptr<Entry const>;
+
+	auto on_pwd_changed() -> bool;
+	auto on_select(Entry const& entry) -> bool;
 
 	Entry m_root{};
 	std::vector<klib::Ptr<Entry const>> m_stack{};

@@ -1,8 +1,7 @@
 #include "detail/util.hpp"
 #include "klib/debug/assert.hpp"
-#include "xtag/format.hpp"
+#include "xtag/formatter.hpp"
 #include "xtag/instance.hpp"
-#include "xtag/util.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
 #include <filesystem>
@@ -129,19 +128,13 @@ class Scanner {
 	ScanInfo const& m_info;
 };
 
-void format_file_to(std::string& out, Entry const& file, fs::path const& parent = {}) {
-	auto tags = util::join_tags(file.tags);
-	auto const path = [&] {
-		if (parent.empty()) { return file.path.generic_string(); }
-		return fs::relative(file.path, parent).generic_string();
-	}();
-	std::format_to(std::back_inserter(out), "{} [{}]", path, tags);
-}
+class FormatTree {
+  public:
+	explicit FormatTree(Formatter const& formatter) : m_formatter(formatter) {}
 
-struct FormatTree {
 	[[nodiscard]] auto operator()(Entry const& directory) {
 		if (directory.type == EntryType::Directory) { format_directory(directory, directory, 0); }
-		return std::move(ret);
+		return std::move(m_ret);
 	}
 
 	void format_directory(Entry const& parent, Entry const& directory, int const depth) {
@@ -156,22 +149,24 @@ struct FormatTree {
 	}
 
 	void prefix_spaces(int const count) {
-		for (int i = 0; i < count; ++i) { ret.push_back(' '); }
+		for (int i = 0; i < count; ++i) { m_ret.push_back(' '); }
 	}
 
 	void write_line(std::string_view const line, int const depth) {
-		if (!ret.empty() && ret.back() != '\n') { ret.push_back('\n'); }
+		if (!m_ret.empty() && m_ret.back() != '\n') { m_ret.push_back('\n'); }
 		prefix_spaces(depth * 2);
-		ret.append(line);
+		m_ret.append(line);
 	}
 
 	void write_file(Entry const& parent, Entry const& file, int const depth) {
-		auto line = std::string{"|--"};
-		format_file_to(line, file, parent.path);
+		auto line = std::string{"|-- "};
+		m_formatter.format_file_to(line, file, parent.path);
 		write_line(line, depth);
 	}
 
-	std::string ret{};
+  private:
+	Formatter const& m_formatter;
+	std::string m_ret{};
 };
 } // namespace
 
@@ -222,10 +217,8 @@ auto xattr::remove(klib::CString const path, klib::CString const name) -> Result
 }
 
 void detail::serialize_tags_to(std::string& out, std::span<std::string_view const> tags) {
-	for (auto const& tag : tags) {
-		if (!out.empty()) { out.push_back(tag_delimiter_v); }
-		out.append(tag);
-	}
+	auto const formatter = Formatter{.delimiter = {&tag_delimiter_v, 1}};
+	for (auto const& tag : tags) { formatter.join_to(out, tag); }
 }
 
 void detail::deserialize_tags(StringSet& out_set, std::string_view const serialized, OnTagDeserialized per_tag) {
@@ -233,50 +226,6 @@ void detail::deserialize_tags(StringSet& out_set, std::string_view const seriali
 		auto const tag = std::string_view{it};
 		per_tag(repoint_through(out_set, tag));
 	}
-}
-
-void util::join_to(std::string& out, std::string_view const item, std::string_view const delimiter) {
-	if (item.empty()) { return; }
-	if (!out.empty()) { out.append(delimiter); }
-	out.append(item);
-}
-
-auto util::join(std::string_view const item, std::string_view const delimiter) {
-	auto ret = std::string{};
-	join_to(ret, item, delimiter);
-	return ret;
-}
-
-auto util::as_string(ScanTag const& scan_tag, std::string_view const inherited_prefix) -> std::string {
-	if (scan_tag.type == TagType::Primary || inherited_prefix.empty()) { return std::string{scan_tag.value}; }
-	return std::format("{}{}", inherited_prefix, scan_tag.value);
-}
-
-auto util::as_strings(std::span<ScanTag const> scan_tags, std::string_view const inherited_prefix) -> std::vector<std::string> {
-	auto ret = std::vector<std::string>{};
-	for (auto const& scan_tag : scan_tags) { ret.push_back(as_string(scan_tag, inherited_prefix)); }
-	return ret;
-}
-
-void util::join_tags_to(std::string& out, std::span<ScanTag const> tags, JoinParams const& params) {
-	auto count = 0;
-	for (auto const& scan_tag : tags) {
-		if ((params.type_filter & scan_tag.type) == TagType::None) { continue; }
-
-		if (params.max_count > 0 && count > params.max_count) {
-			join_to(out, params.overflow, params.delimiter);
-			return;
-		}
-
-		++count;
-		join_to(out, as_string(scan_tag, params.inherited_prefix), params.delimiter);
-	}
-}
-
-auto util::join_tags(std::span<ScanTag const> tags, JoinParams const& params) -> std::string {
-	auto ret = std::string{};
-	join_tags_to(ret, tags, params);
-	return ret;
 }
 
 void Entry::sort_recursive() {
@@ -341,6 +290,69 @@ auto Instance::get_serialized_to(std::string& out, fs::path const& path) const -
 	}
 	return {};
 }
+
+void Formatter::join_to(std::string& out, std::string_view const item) const {
+	if (item.empty()) { return; }
+	if (!out.empty()) { out.append(delimiter); }
+	out.append(item);
+}
+
+auto Formatter::join(std::string_view const item) const -> std::string {
+	auto ret = std::string{};
+	join_to(ret, item);
+	return ret;
+}
+
+void Formatter::truncate_to(std::string& out, std::span<std::string const> items, int const max_count) const {
+	for (auto const& [index, item] : std::views::enumerate(items)) {
+		auto const count = index + 1;
+		if (count > max_count) {
+			join_to(out, truncator);
+			return;
+		}
+		join_to(out, item);
+	}
+}
+
+auto Formatter::truncate(std::span<std::string const> items, int const max_count) const -> std::string {
+	auto ret = std::string{};
+	truncate_to(ret, items, max_count);
+	return ret;
+}
+
+auto Formatter::format(ScanTag const& tag) const -> std::string {
+	if (tag.type == TagType::Primary || inherited_prefix.empty()) { return std::string{tag.value}; }
+	return std::format("{}{}", inherited_prefix, tag.value);
+}
+
+void Formatter::join_to(std::string& out, std::span<ScanTag const> tags) const {
+	for (auto const& tag : tags) { join_to(out, format(tag)); }
+}
+
+auto Formatter::join(std::span<ScanTag const> tags) const -> std::string {
+	auto ret = std::string{};
+	join_to(ret, tags);
+	return ret;
+}
+
+void Formatter::format_file_to(std::string& out, Entry const& file, fs::path const& parent) const {
+	auto const tags = join(file.tags);
+	auto const path = [&] {
+		if (parent.empty()) { return file.path.generic_string(); }
+		return fs::relative(file.path, parent).generic_string();
+	}();
+
+	out += path;
+	if (!tags.empty()) { std::format_to(std::back_inserter(out), " [{}]", tags); }
+}
+
+auto Formatter::format_file(Entry const& file, fs::path const& parent) const -> std::string {
+	auto ret = std::string{};
+	format_file_to(ret, file, parent);
+	return ret;
+}
+
+auto Formatter::format_tree(Entry const& directory) const -> std::string { return FormatTree{*this}(directory); }
 } // namespace xtag
 
 auto xtag::format_error(Error::Type const type, std::string_view const message) -> std::string {
@@ -351,11 +363,3 @@ auto xtag::to_error(Error::Type const type, std::string_view const message) -> s
 	auto msg = format_error(type, message);
 	return std::unexpected{Error{.type = type, .message = std::move(msg)}};
 }
-
-auto xtag::format_file(Entry const& file) -> std::string {
-	auto ret = std::string{};
-	format_file_to(ret, file);
-	return ret;
-}
-
-auto xtag::format_tree(Entry const& directory) -> std::string { return FormatTree{}(directory); }

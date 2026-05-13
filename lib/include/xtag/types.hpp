@@ -78,13 +78,6 @@ struct ScanTag {
 	Type type{};
 };
 
-struct Tag {
-	auto operator==(Tag const&) const -> bool = default;
-
-	std::string_view value{};
-	bool inherited{};
-};
-
 enum class EntryType : std::int8_t {
 	None = 0,
 	Directory = 1 << 0,
