@@ -21,10 +21,11 @@ auto FileBrowser::get_current_page() const -> Page {
 }
 
 void FileBrowser::refresh(EntryList list) {
+	KLIB_ASSERT(!list.entries.empty());
 	m_list = std::move(list);
 	m_filtered.clear();
 	for (auto const& entry : m_list.entries) { m_filtered.emplace_back(&entry); }
-	m_selected = m_filtered.empty() ? nullptr : m_filtered.front();
+	m_selected = m_filtered.front();
 	repaginate(m_page_limit);
 }
 
@@ -60,7 +61,7 @@ void FileBrowser::apply_filter(std::string_view const allowlist, std::string_vie
 	};
 
 	auto const should_include = [&](Entry const& entry) {
-		auto const path = entry.path.generic_string();
+		auto const path = fs::relative(entry.path, m_list.path).generic_string();
 		if (!blocks.empty() && is_match(blocks, path)) { return false; }
 		return allows.empty() || is_match(allows, path);
 	};

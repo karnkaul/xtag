@@ -11,7 +11,7 @@ class MainWindow : public Object {
   public:
 	void update() final;
 
-	void refresh_root_directory(EntryList list);
+	void set_list(EntryList list);
 
 	ScanData scan_data{};
 

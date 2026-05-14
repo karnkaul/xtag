@@ -56,24 +56,30 @@ void Controller::shutdown() {
 }
 
 void Controller::refresh_root_directory() {
-	if (m_main_window.scan_data.root.empty()) {
+	auto& scan_data = m_main_window.scan_data;
+	if (scan_data.root.empty()) {
 		log.warn("attempt to refresh empty root directory");
 		return;
 	}
 
-	if (!fs::is_directory(m_main_window.scan_data.root)) {
-		log.warn("'{}' is not a directory, resetting", m_main_window.scan_data.root.generic_string());
-		m_main_window.scan_data.root.clear();
+	if (!fs::is_directory(scan_data.root)) {
+		log.warn("'{}' is not a directory, resetting", scan_data.root.generic_string());
+		scan_data.root.clear();
 		return;
 	}
 
-	auto const scan_info = to_scan_info(m_main_window.scan_data);
-	auto result = m_instance->scan_directory(m_main_window.scan_data.root, scan_info);
+	auto const scan_info = to_scan_info(scan_data);
+	auto result = m_instance->scan_directory(scan_data.root, scan_info);
 	if (!result) {
-		log.error("TODO: failed to load directory: '{}'", m_main_window.scan_data.root.generic_string());
+		log.error("TODO: failed to load directory: '{}'", scan_data.root.generic_string());
 		return;
 	}
 
-	m_main_window.refresh_root_directory(std::move(*result));
+	if (result->entries.empty()) {
+		log.error("TODO: internal error: EntryList is unexpectedly empty");
+		return;
+	}
+
+	m_main_window.set_list(std::move(*result));
 }
 } // namespace xtag::gui

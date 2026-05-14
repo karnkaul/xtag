@@ -70,7 +70,7 @@ void MainWindow::update() {
 	}
 }
 
-void MainWindow::refresh_root_directory(EntryList list) {
+void MainWindow::set_list(EntryList list) {
 	list.sort_entries();
 	m_root_directory = list.path.generic_string();
 	populate_data(list);
@@ -111,6 +111,8 @@ void MainWindow::update_pagination() {
 	if (ImGui::Button("<<")) { m_file_browser->set_page_number(page_number - 1); }
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+
+	ImGui::BeginDisabled(page_count == 0);
 	ImGui::SetNextItemWidth(50.0f);
 	if (ImGui::BeginCombo("##page", klib::FixedString{"{}", page_number}.c_str())) {
 		for (int number = 0; number < page_count; ++number) {
@@ -118,6 +120,8 @@ void MainWindow::update_pagination() {
 		}
 		ImGui::EndCombo();
 	}
+	ImGui::EndDisabled();
+
 	ImGui::SameLine();
 	ImGui::BeginDisabled(page_number + 1 == page_count);
 	if (ImGui::Button(">>")) { m_file_browser->set_page_number(page_number + 1); }
