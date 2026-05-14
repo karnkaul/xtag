@@ -12,6 +12,8 @@ class App : public gvdi::App {
 	[[nodiscard]] auto run(int argc, char const* const* argv) -> int;
 
   private:
+	void stage_create() final;
+
 	void on_path_drop(std::span<char const* const> paths) final;
 	void update() final;
 

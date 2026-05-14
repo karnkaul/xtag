@@ -17,6 +17,12 @@ auto App::run(int argc, char const* const* argv) -> int {
 	return EXIT_SUCCESS;
 }
 
+void App::stage_create() {
+	gvdi::App::stage_create();
+
+	Controller::set_styles(ImGui::GetStyle());
+}
+
 void App::on_path_drop(std::span<char const* const> paths) {
 	if (paths.empty()) { return; }
 	m_controller.on_drop(paths.front());

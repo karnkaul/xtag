@@ -21,9 +21,10 @@ auto Scan::execute(Instance& instance) -> ExitCode {
 	auto result = instance.scan_directory(root, info);
 	if (!result) { return handle_error(result.error()); }
 
-	result->sort_recursive();
-	auto const tree = Formatter{}.format_tree(*result);
-	std::println("{}", tree);
+	result->sort_entries();
+	auto const table = Formatter{}.format_table(*result);
+	std::println("{}", table);
+
 	return ExitCode::Success;
 }
 } // namespace xtag::cli::command

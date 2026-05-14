@@ -1,4 +1,5 @@
 #include "detail/util.hpp"
+#include "klib/cli/text_table.hpp"
 #include "klib/debug/assert.hpp"
 #include "xtag/formatter.hpp"
 #include "xtag/instance.hpp"
@@ -76,18 +77,18 @@ class ScopedErrno {
 	return EntryType::None;
 }
 
-class Scanner {
+class ScannerOld {
   public:
-	explicit Scanner(Instance& self, ScanInfo const& info) : m_self(self), m_info(info) {}
+	explicit ScannerOld(Instance& self, ScanInfo const& info) : m_self(self), m_info(info) {}
 
-	[[nodiscard]] auto operator()(fs::path const& root) -> Result<Entry> {
+	[[nodiscard]] auto operator()(fs::path const& root) -> Result<EntryOld> {
 		if (!fs::is_directory(root)) { return to_error(Error::Type::InvalidArgument, std::format("not a directory: '{}'", root.generic_string())); }
 		return scan_directory(root, {}, 0);
 	}
 
   private:
-	[[nodiscard]] auto scan_directory(fs::path const& path, std::span<ScanTag const> parent_tags, int const depth) -> Entry {
-		auto ret = Entry{.type = EntryType::Directory};
+	[[nodiscard]] auto scan_directory(fs::path const& path, std::span<ScanTag const> parent_tags, int const depth) -> EntryOld {
+		auto ret = EntryOld{.type = EntryType::Directory};
 		ret.path = fs::canonical(path);
 		ret.tags = get_combined_tags(path, parent_tags);
 
@@ -109,16 +110,16 @@ class Scanner {
 		return ret;
 	}
 
-	void scan_subdirectory(Entry& parent, fs::path const& path, int const depth) {
+	void scan_subdirectory(EntryOld& parent, fs::path const& path, int const depth) {
 		if (depth > m_info.depth) { return; }
 		auto subdir = scan_directory(path, parent.tags, depth);
 		if (!should_include(subdir.tags, m_info.filter)) { return; }
 		parent.subentries.push_back(std::move(subdir));
 	}
 
-	void scan_file(Entry& parent, fs::path const& path) {
+	void scan_file(EntryOld& parent, fs::path const& path) {
 		if (!m_info.filter.include_files) { return; }
-		auto file = Entry{.type = EntryType::File, .path = fs::canonical(path)};
+		auto file = EntryOld{.type = EntryType::File, .path = fs::canonical(path)};
 		file.tags = get_combined_tags(file.path, parent.tags);
 		if (!should_include(file.tags, m_info.filter)) { return; }
 		parent.subentries.push_back(std::move(file));
@@ -128,45 +129,59 @@ class Scanner {
 	ScanInfo const& m_info;
 };
 
-class FormatTree {
+class Scanner {
   public:
-	explicit FormatTree(Formatter const& formatter) : m_formatter(formatter) {}
+	explicit Scanner(Instance& self, ScanInfo const& info) : m_self(self), m_info(info) {}
 
-	[[nodiscard]] auto operator()(Entry const& directory) {
-		if (directory.type == EntryType::Directory) { format_directory(directory, directory, 0); }
+	[[nodiscard]] auto operator()(fs::path const& root) -> Result<EntryList> {
+		if (!fs::is_directory(root)) { return to_error(Error::Type::InvalidArgument, std::format("not a directory: '{}'", root.generic_string())); }
+		m_ret.path = fs::canonical(root);
+		scan_directory(m_ret.path, {}, 0);
 		return std::move(m_ret);
 	}
 
-	void format_directory(Entry const& parent, Entry const& directory, int const depth) {
-		write_file(parent, directory, depth);
-		for (auto const& subentry : directory.subentries) {
-			switch (subentry.type) {
-			case EntryType::Directory: format_directory(directory, subentry, depth + 1); break;
-			case EntryType::File: write_file(parent, subentry, depth); break;
-			default: break;
+  private:
+	void scan_directory(fs::path const& path, std::span<ScanTag const> parent_tags, int const depth) {
+		if (depth > m_info.depth) { return; }
+
+		auto const tags = get_combined_tags(path, parent_tags);
+
+		if (should_include(tags, m_info.filter)) {
+			m_ret.entries.push_back(Entry{
+				.type = EntryType::Directory,
+				.path = path,
+				.tags = tags,
+			});
+		}
+
+		for (auto const& it : fs::directory_iterator{path}) {
+			if (it.is_directory()) {
+				scan_directory(it.path(), tags, depth + 1);
+			} else if (it.is_regular_file()) {
+				scan_file(it.path(), tags);
 			}
 		}
 	}
 
-	void prefix_spaces(int const count) {
-		for (int i = 0; i < count; ++i) { m_ret.push_back(' '); }
+	[[nodiscard]] auto get_combined_tags(fs::path const& path, std::span<ScanTag const> inherited_tags) const -> std::vector<ScanTag> {
+		auto ret = std::vector<ScanTag>{};
+		if (auto result = m_self.get_tags(path)) { ret = std::move(result->tags); }
+		for (auto const& scan_tag : inherited_tags) { ret.push_back(ScanTag{.value = scan_tag.value, .type = TagType::Inherited}); }
+		return ret;
 	}
 
-	void write_line(std::string_view const line, int const depth) {
-		if (!m_ret.empty() && m_ret.back() != '\n') { m_ret.push_back('\n'); }
-		prefix_spaces(depth * 2);
-		m_ret.append(line);
+	void scan_file(fs::path const& path, std::span<ScanTag const> inherited_tags) {
+		if (!m_info.filter.include_files) { return; }
+		auto file = Entry{.type = EntryType::File, .path = fs::canonical(path)};
+		file.tags = get_combined_tags(file.path, inherited_tags);
+		if (!should_include(file.tags, m_info.filter)) { return; }
+		m_ret.entries.push_back(std::move(file));
 	}
 
-	void write_file(Entry const& parent, Entry const& file, int const depth) {
-		auto line = std::string{"|-- "};
-		m_formatter.format_file_to(line, file, parent.path);
-		write_line(line, depth);
-	}
+	Instance& m_self;
+	ScanInfo const& m_info;
 
-  private:
-	Formatter const& m_formatter;
-	std::string m_ret{};
+	EntryList m_ret{};
 };
 } // namespace
 
@@ -228,8 +243,8 @@ void detail::deserialize_tags(StringSet& out_set, std::string_view const seriali
 	}
 }
 
-void Entry::sort_recursive() {
-	auto const pred = [](Entry const& a, Entry const& b) {
+void EntryOld::sort_recursive() {
+	auto const pred = [](EntryOld const& a, EntryOld const& b) {
 		if (a.type != b.type) { return a.type == EntryType::Directory; }
 		return a.path < b.path;
 	};
@@ -237,10 +252,18 @@ void Entry::sort_recursive() {
 	for (auto& subentry : subentries) { subentry.sort_recursive(); }
 }
 
-auto Instance::get_tags(fs::path const& path) -> Result<Entry> {
+void EntryList::sort_entries() {
+	auto const pred = [](Entry const& a, Entry const& b) {
+		if (a.type != b.type) { return a.type == EntryType::Directory; }
+		return a.path < b.path;
+	};
+	std::ranges::sort(entries, pred);
+}
+
+auto Instance::get_tags(fs::path const& path) -> Result<EntryOld> {
 	auto& serialized = wipe_buffer();
 	return get_serialized_to(serialized, path).transform([&] {
-		auto ret = Entry{.path = fs::canonical(path)};
+		auto ret = EntryOld{.path = fs::canonical(path)};
 		ret.type = to_entry_type(ret.path);
 		auto const per_tag = [&](std::string_view const tag) { ret.tags.push_back(ScanTag{.value = tag, .type = TagType::Primary}); };
 		detail::deserialize_tags(m_tag_storage, serialized, per_tag);
@@ -268,7 +291,9 @@ auto Instance::erase_tags(fs::path const& path) const -> Result<void> {
 	return xattr::remove(str.c_str(), get_attribute_name());
 }
 
-auto Instance::scan_directory(fs::path const& directory, ScanInfo const& info) -> Result<Entry> { return Scanner{*this, info}(directory); }
+auto Instance::scan_directory_old(fs::path const& directory, ScanInfo const& info) -> Result<EntryOld> { return ScannerOld{*this, info}(directory); }
+
+auto Instance::scan_directory(fs::path const& directory, ScanInfo const& info) -> Result<EntryList> { return Scanner{*this, info}(directory); }
 
 auto Instance::get_attribute_name() const -> klib::CString {
 	if (custom_attribute_name.empty()) { return default_attribute_name_v; }
@@ -335,24 +360,46 @@ auto Formatter::join(std::span<ScanTag const> tags) const -> std::string {
 	return ret;
 }
 
-void Formatter::format_file_to(std::string& out, Entry const& file, fs::path const& parent) const {
-	auto const tags = join(file.tags);
+void Formatter::format_to(std::string& out, Entry const& entry, fs::path const& root) const {
+	auto const tags = join(entry.tags);
 	auto const path = [&] {
-		if (parent.empty()) { return file.path.generic_string(); }
-		return fs::relative(file.path, parent).generic_string();
+		if (root.empty()) { return entry.path.generic_string(); }
+		return fs::relative(entry.path, root).generic_string();
 	}();
 
-	out += path;
+	out.append(path);
+	if (entry.type == EntryType::Directory && !out.ends_with('/')) { out.push_back('/'); }
+
 	if (!tags.empty()) { std::format_to(std::back_inserter(out), " [{}]", tags); }
 }
 
-auto Formatter::format_file(Entry const& file, fs::path const& parent) const -> std::string {
+auto Formatter::format(Entry const& entry, fs::path const& root) const -> std::string {
 	auto ret = std::string{};
-	format_file_to(ret, file, parent);
+	format_to(ret, entry, root);
 	return ret;
 }
 
-auto Formatter::format_tree(Entry const& directory) const -> std::string { return FormatTree{*this}(directory); }
+auto Formatter::format_table(EntryList const& list) const -> std::string {
+	if (list.entries.empty()) { return {}; }
+
+	using Align = klib::TextTable::Align;
+	auto table = klib::TextTable::Builder{}.add_column("#", Align::Right).add_column("relative path").add_column("tags").build();
+	for (auto const& [index, entry] : std::views::enumerate(list.entries)) {
+		auto const number = index + 1;
+		auto row = std::vector<std::string>{};
+
+		row.push_back(std::format("{}", number));
+
+		auto path = fs::relative(entry.path, list.path).generic_string();
+		if (entry.type == EntryType::Directory && !path.ends_with('/')) { path.push_back('/'); }
+		row.push_back(std::move(path));
+
+		row.push_back(join(entry.tags));
+
+		table.push_row(std::move(row));
+	}
+	return table.serialize();
+}
 } // namespace xtag
 
 auto xtag::format_error(Error::Type const type, std::string_view const message) -> std::string {

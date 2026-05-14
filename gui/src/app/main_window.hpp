@@ -11,19 +11,25 @@ class MainWindow : public Object {
   public:
 	void update() final;
 
-	void refresh_root_directory(Entry directory);
+	void refresh_root_directory(EntryList list);
 
 	ScanData scan_data{};
 
   private:
-	void update_controls();
-	void update_navigation();
+	struct Filter {
+		klib::StrBuf<127> allow{};
+		klib::StrBuf<127> block{};
+	};
+
+	void update_scan_data();
+	void update_filters();
 	void update_inspector(EntryModel const& entry);
 	void update_browser();
 
-	std::optional<FileBrowser> m_file_browser{};
 	std::string m_root_directory{};
-	klib::StrBuf<127> m_filename_filter{};
+	std::optional<FileBrowser> m_file_browser{};
+
+	Filter m_filter{};
 	bool m_open_tag_viewer{};
 };
 } // namespace xtag::gui

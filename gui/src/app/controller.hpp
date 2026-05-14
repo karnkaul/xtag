@@ -2,6 +2,7 @@
 #include "app/main_menu.hpp"
 #include "app/main_window.hpp"
 #include "xtag/instance.hpp"
+#include <imgui.h>
 #include <cstdint>
 
 namespace xtag::gui {
@@ -11,6 +12,8 @@ class Controller : public Object {
 
 	void initialize(Services const& services) final;
 	void update() final;
+
+	static void set_styles(ImGuiStyle& style);
 
 	void on_drop(fs::path const& root);
 	void on_window_close() { shutdown(); }

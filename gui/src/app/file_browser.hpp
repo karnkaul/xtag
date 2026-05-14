@@ -1,46 +1,29 @@
 #pragma once
 #include "klib/base_types.hpp"
 #include "klib/ptr.hpp"
-#include "klib/string/c_string.hpp"
 #include "xtag/types.hpp"
 
 namespace xtag::gui {
-struct Directory {
-	klib::Ptr<Entry const> entry{};
-	klib::CString relative_path{};
-};
-
 class FileBrowser : public klib::Pinned {
   public:
-	explicit FileBrowser(Entry root) { refresh(std::move(root)); }
+	explicit FileBrowser(EntryList list) { refresh(std::move(list)); }
 
-	[[nodiscard]] auto get_root() const -> Entry const& { return m_root; }
-	[[nodiscard]] auto get_pwd() const -> Directory;
-
+	[[nodiscard]] auto get_view() const -> std::span<klib::Ptr<Entry const> const> { return m_view; }
 	[[nodiscard]] auto get_selected() const -> klib::Ptr<Entry const> { return m_selected; }
 
-	[[nodiscard]] auto has_parent() const -> bool;
-	[[nodiscard]] auto get_parent() const -> klib::Ptr<Entry const>;
+	void refresh(EntryList list);
 
-	void refresh(Entry root);
+	auto select_entry(Entry const& subentry) -> bool;
 
-	auto select_subentry(Entry const& subentry) -> bool;
-	void select_pwd();
-	auto select_parent() -> bool;
-
-	auto open_parent() -> bool;
-	auto open_selected() -> bool;
-	void open_root();
+	void apply_filter(std::string_view allowlist, std::string_view blocklist);
 
   private:
-	[[nodiscard]] auto find_subentry(fs::path const& path) const -> klib::Ptr<Entry const>;
+	[[nodiscard]] auto find_entry(fs::path const& path) const -> klib::Ptr<Entry const>;
 
-	auto on_pwd_changed() -> bool;
 	auto on_select(Entry const& entry) -> bool;
 
-	Entry m_root{};
-	std::vector<klib::Ptr<Entry const>> m_stack{};
+	EntryList m_list{};
+	std::vector<klib::Ptr<Entry const>> m_view{};
 	klib::Ptr<Entry const> m_selected{};
-	std::string m_pwd_rel_path{};
 };
 } // namespace xtag::gui

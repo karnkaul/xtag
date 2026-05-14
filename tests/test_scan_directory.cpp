@@ -9,8 +9,8 @@ TEST_CASE(scan_directory) {
 
 	auto const dir_a = fixture.test_dir.create_directory("dir_a");
 	auto const dir_b = fixture.test_dir.create_directory("dir_a/dir_b");
-	auto const file_c = fixture.test_dir.create_empty_file("dir_a/file_c");
-	auto const file_d = fixture.test_dir.create_empty_file("dir_a/dir_b/file_d");
+	auto const file_c = fixture.test_dir.create_empty_file("dir_a/dir_b/file_c");
+	auto const file_d = fixture.test_dir.create_empty_file("dir_a/file_d");
 
 	auto const tags_a = std::vector<std::string_view>{"foo", "bar"};
 	[[maybe_unused]] auto res = fixture.instance.replace_tags(dir_a, tags_a);
@@ -37,28 +37,32 @@ TEST_CASE(scan_directory) {
 	ASSERT(result);
 	EXPECT(result->path == fs::absolute(fixture.test_dir.get_path()));
 
-	result->sort_recursive();
+	result->sort_entries();
+	ASSERT(result->entries.size() == 5);
 
-	ASSERT(result->subentries.size() == 1);
-	auto const& res_dir_a = result->subentries[0];
+	auto const& res_root = result->entries[0];
+	auto const& res_dir_a = result->entries[1];
+	auto const& res_dir_b = result->entries[2];
+	auto const& res_file_c = result->entries[3];
+	auto const& res_file_d = result->entries[4];
+
+	EXPECT(res_root.type == xtag::EntryType::Directory);
+	EXPECT(res_root.path == fs::absolute(fixture.test_dir.get_path()));
+	EXPECT(res_root.tags.empty());
+
 	EXPECT(res_dir_a.type == xtag::EntryType::Directory);
 	EXPECT(expect_tags(res_dir_a.tags, tags_a, {}));
-	ASSERT(res_dir_a.subentries.size() == 2);
 
-	auto const& res_dir_b = res_dir_a.subentries[0];
 	EXPECT(res_dir_b.type == xtag::EntryType::Directory);
 	EXPECT(res_dir_b.path == fs::absolute(dir_b));
 	EXPECT(expect_tags(res_dir_b.tags, tags_b, tags_a));
 
-	auto const& res_file_c = res_dir_a.subentries[1];
 	EXPECT(res_file_c.type == xtag::EntryType::File);
 	EXPECT(res_file_c.path == fs::absolute(file_c));
 	EXPECT(expect_tags(res_file_c.tags, tags_c, tags_a));
 
-	ASSERT(res_dir_b.subentries.size() == 1);
-	auto const& res_file_d = res_dir_b.subentries[0];
 	EXPECT(res_file_d.type == xtag::EntryType::File);
 	EXPECT(res_file_d.path == fs::absolute(file_d));
-	EXPECT(expect_tags(res_file_d.tags, {}, tags_b));
+	EXPECT(expect_tags(res_file_d.tags, {}, tags_a));
 }
 } // namespace

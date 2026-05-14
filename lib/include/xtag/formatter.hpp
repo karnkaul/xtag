@@ -13,9 +13,10 @@ struct Formatter {
 	void join_to(std::string& out, std::span<ScanTag const> tags) const;
 	[[nodiscard]] auto join(std::span<ScanTag const> tags) const -> std::string;
 
-	void format_file_to(std::string& out, Entry const& file, fs::path const& parent = {}) const;
-	[[nodiscard]] auto format_file(Entry const& file, fs::path const& parent = {}) const -> std::string;
-	[[nodiscard]] auto format_tree(Entry const& directory) const -> std::string;
+	void format_to(std::string& out, Entry const& entry, fs::path const& root = {}) const;
+	[[nodiscard]] auto format(Entry const& entry, fs::path const& root = {}) const -> std::string;
+
+	[[nodiscard]] auto format_table(EntryList const& list) const -> std::string;
 
 	std::string_view inherited_prefix{"*"};
 	std::string_view delimiter{", "};

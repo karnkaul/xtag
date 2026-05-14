@@ -2,15 +2,17 @@
 #include "xtag/formatter.hpp"
 
 namespace xtag::gui {
-auto EntryData::from(Entry const& entry) -> EntryData {
+auto EntryData::from(Entry const& entry, fs::path const& root) -> EntryData {
 	auto ret = EntryData{};
 
+	auto const filename = entry.path.filename().string();
+	auto const uri = fs::relative(entry.path, root).generic_string();
 	if (entry.type == EntryType::Directory) {
-		ret.inspect_filename = std::format("directory: {}", entry.path.filename().string()),
-		ret.tree_filename = std::format("{}/", entry.path.filename().string());
+		ret.inspect_uri = std::format("directory: {}", filename);
+		ret.tree_uri = std::format("{}/", uri);
 	} else {
-		ret.inspect_filename = std::format("file: {}", entry.path.filename().string());
-		ret.tree_filename = entry.path.filename().string();
+		ret.inspect_uri = std::format("file: {}", filename);
+		ret.tree_uri = uri;
 	}
 
 	auto const formatter = Formatter{};
@@ -22,8 +24,8 @@ auto EntryData::from(Entry const& entry) -> EntryData {
 
 auto EntryData::to_model() const -> EntryModel {
 	return EntryModel{
-		.tree_filename = tree_filename,
-		.inspect_filename = inspect_filename,
+		.tree_uri = tree_uri,
+		.inspect_uri = inspect_uri,
 		.short_tags = short_tags,
 		.all_tags = all_tags,
 	};

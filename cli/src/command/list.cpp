@@ -12,8 +12,8 @@ auto List::execute(Instance& instance) -> ExitCode {
 	auto const result = instance.get_tags(m_path);
 	if (!result) { return handle_error(result.error()); }
 
-	auto const table = Formatter{}.format_file(*result);
-	std::println("{}", table);
+	std::println("{}", Formatter{}.join(result->tags));
+
 	return ExitCode::Success;
 }
 } // namespace xtag::cli::command

@@ -42,6 +42,8 @@ void Controller::update() {
 	ImGui::End();
 }
 
+void Controller::set_styles(ImGuiStyle& style) { style.CellPadding = {6.0f, 6.0f}; }
+
 void Controller::on_drop(fs::path const& root) {
 	if (!fs::is_directory(root)) { return; }
 	m_main_window.scan_data.root = root;
