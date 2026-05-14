@@ -1,10 +1,15 @@
 #include "app/main_window.hpp"
 #include "app/log.hpp"
 #include "klib/string/c_string.hpp"
+#include "klib/string/fixed_string.hpp"
 #include <imgui.h>
+#include <array>
+#include <ranges>
 
 namespace xtag::gui {
 namespace {
+constexpr auto page_limits_v = std::array{10, 20, 50, 99};
+
 void populate_data(EntryList& list) {
 	for (auto& entry : list.entries) { entry.custom_payload = EntryData::from(entry, list.path); }
 }
@@ -42,15 +47,16 @@ void MainWindow::update() {
 		ImGui::TableNextRow();
 
 		ImGui::TableNextColumn();
-		update_scan_data();
+		update_inspector(entry);
 
 		ImGui::TableNextColumn();
-		update_inspector(entry);
+		update_scan_data();
 
 		ImGui::EndTable();
 	}
 
 	update_filters();
+	update_pagination();
 
 	if (m_open_tag_viewer) {
 		m_open_tag_viewer = false;
@@ -69,7 +75,7 @@ void MainWindow::refresh_root_directory(EntryList list) {
 	m_root_directory = list.path.generic_string();
 	populate_data(list);
 	if (!m_file_browser) {
-		m_file_browser.emplace(std::move(list));
+		m_file_browser.emplace(std::move(list), page_limits_v.back());
 	} else {
 		m_file_browser->refresh(std::move(list));
 	}
@@ -97,6 +103,37 @@ void MainWindow::update_filters() {
 	if (ImGui::Button("apply")) { m_file_browser->apply_filter(m_filter.allow.data(), m_filter.block.data()); }
 }
 
+void MainWindow::update_pagination() {
+	auto const page_number = m_file_browser->get_page_number();
+	auto const page_count = m_file_browser->get_page_count();
+
+	ImGui::BeginDisabled(page_number == 0);
+	if (ImGui::Button("<<")) { m_file_browser->set_page_number(page_number - 1); }
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(50.0f);
+	if (ImGui::BeginCombo("##page", klib::FixedString{"{}", page_number}.c_str())) {
+		for (int number = 0; number < page_count; ++number) {
+			if (ImGui::Selectable(klib::FixedString{"{}", number}.c_str(), number == page_number)) { m_file_browser->set_page_number(number); }
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled(page_number + 1 == page_count);
+	if (ImGui::Button(">>")) { m_file_browser->set_page_number(page_number + 1); }
+	ImGui::EndDisabled();
+
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(80.0f);
+	if (ImGui::BeginCombo("items per page", klib::FixedString<>{"{}", m_file_browser->get_page_limit()}.c_str())) {
+		auto const page_limit = [this](int const limit) {
+			if (ImGui::Selectable(klib::FixedString{"{}", limit}.c_str(), m_file_browser->get_page_limit() == limit)) { m_file_browser->repaginate(limit); }
+		};
+		for (auto const limit : page_limits_v) { page_limit(limit); }
+		ImGui::EndCombo();
+	}
+}
+
 void MainWindow::update_inspector(EntryModel const& entry) {
 	ImGui::TextUnformatted(entry.inspect_uri.c_str());
 	ImGui::TextUnformatted(entry.short_tags.c_str());
@@ -107,8 +144,17 @@ void MainWindow::update_browser() {
 	KLIB_ASSERT(m_file_browser);
 
 	auto const selected = m_file_browser->get_selected();
-	for (auto const entry : m_file_browser->get_view()) {
+	auto const entries = m_file_browser->get_current_page();
+	auto const number_width = [&] {
+		auto ret = 1;
+		for (auto count = entries.size(); count >= 10; count /= 10) { ++ret; }
+		return ret;
+	}();
+	for (auto const& [index, entry] : std::views::enumerate(entries)) {
 		auto const entry_model = to_model(entry);
+		auto const number = index + 1;
+		ImGui::TextUnformatted(klib::FixedString{"{: >{}}.", number, number_width}.c_str());
+		ImGui::SameLine();
 		if (ImGui::Selectable(entry_model.tree_uri.c_str(), entry == selected)) { m_file_browser->select_entry(*entry); }
 	}
 }

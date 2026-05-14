@@ -23,6 +23,7 @@ class MainWindow : public Object {
 
 	void update_scan_data();
 	void update_filters();
+	void update_pagination();
 	void update_inspector(EntryModel const& entry);
 	void update_browser();
 
