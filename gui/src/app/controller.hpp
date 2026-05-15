@@ -1,36 +1,11 @@
 #pragma once
-#include "app/main_menu.hpp"
-#include "app/main_window.hpp"
-#include "xtag/instance.hpp"
+#include "app/object.hpp"
 #include <imgui.h>
-#include <cstdint>
 
 namespace xtag::gui {
-class Controller : public Object {
+class IController : public Object {
   public:
-	enum class State : std::int8_t { Running, Finished };
-
-	void initialize(Services const& services) final;
-	void update() final;
-
-	static void set_styles(ImGuiStyle& style);
-
-	void on_drop(fs::path const& root);
-	void on_window_close() { shutdown(); }
-
-	[[nodiscard]] auto get_state() const -> State { return m_state; }
-
-  private:
-	void shutdown();
-	void refresh_root_directory();
-
-	std::shared_ptr<Slot> m_slot{make_slot()};
-
-	klib::Ptr<Instance> m_instance{};
-
-	MainMenu m_main_menu{};
-	MainWindow m_main_window{};
-
-	State m_state{State::Running};
+	virtual void shutdown() = 0;
+	virtual void refresh_root_directory() = 0;
 };
 } // namespace xtag::gui

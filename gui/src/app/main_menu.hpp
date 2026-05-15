@@ -1,11 +1,15 @@
 #pragma once
+#include "app/controller.hpp"
 #include "app/object.hpp"
 
 namespace xtag::gui {
 class MainMenu : public Object {
   public:
+	explicit MainMenu(IController& controller) : m_controller(&controller) {}
+
 	void update() final;
 
   private:
+	klib::Ptr<IController> m_controller{};
 };
 } // namespace xtag::gui

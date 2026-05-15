@@ -1,4 +1,5 @@
 #pragma once
+#include "app/controller.hpp"
 #include "app/file_browser.hpp"
 #include "app/object.hpp"
 #include "app/scan_data.hpp"
@@ -8,6 +9,8 @@
 namespace xtag::gui {
 class MainWindow : public Object {
   public:
+	explicit MainWindow(IController& controller) : m_controller(&controller) {}
+
 	void update() final;
 
 	void set_list(EntryList list);
@@ -25,6 +28,8 @@ class MainWindow : public Object {
 	void update_pagination();
 	void update_inspector(Entry const& selected);
 	void update_list(Entry const& selected);
+
+	klib::Ptr<IController> m_controller{};
 
 	std::string m_root_directory{};
 	std::optional<FileBrowser> m_file_browser{};

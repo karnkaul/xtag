@@ -6,7 +6,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   ${package_name}::${package_name}-lib
   clap::clap
   gvdi::gvdi
-  ksignal::ksignal
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

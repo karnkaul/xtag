@@ -114,7 +114,7 @@ void MainWindow::update_scan_data() {
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(60.0f);
 	ImGui::DragInt("scan depth", &scan_data.depth, 1.0f, 0, 100);
-	if (ImGui::Button("refresh")) { m_signals->refresh_root_directory.dispatch(); }
+	if (ImGui::Button("refresh")) { m_controller->refresh_root_directory(); }
 }
 
 void MainWindow::update_filters() {

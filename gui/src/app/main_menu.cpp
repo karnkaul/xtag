@@ -5,7 +5,7 @@ namespace xtag::gui {
 void MainMenu::update() {
 	if (ImGui::BeginMenu("File")) {
 		ImGui::Separator();
-		if (ImGui::MenuItem("Quit")) { m_signals->shutdown.dispatch(); }
+		if (ImGui::MenuItem("Quit")) { m_controller->shutdown(); }
 		ImGui::EndMenu();
 	}
 }

@@ -22,8 +22,3 @@ if(NOT TARGET gvdi::gvdi)
   message(STATUS "[gvdi]")
   add_subdirectory(src/gvdi)
 endif()
-
-if(NOT TARGET ksignal::ksignal)
-  message(STATUS "[ksignal]")
-  add_subdirectory(src/ksignal)
-endif()

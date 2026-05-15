@@ -15,10 +15,6 @@
     {
       "uri": "karnkaul/gvdi",
       "branch": "v0.3.3"
-    },
-    {
-      "uri": "karnkaul/ksignal",
-      "branch": "v0.1.1"
     }
   ]
 }
