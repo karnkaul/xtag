@@ -1,5 +1,4 @@
 #pragma once
-#include "app/entry_data.hpp"
 #include "app/file_browser.hpp"
 #include "app/object.hpp"
 #include "app/scan_data.hpp"
@@ -24,8 +23,8 @@ class MainWindow : public Object {
 	void update_scan_data();
 	void update_filters();
 	void update_pagination();
-	void update_inspector(EntryData const& entry);
-	void update_browser();
+	void update_inspector(Entry const& selected);
+	void update_list(Entry const& selected);
 
 	std::string m_root_directory{};
 	std::optional<FileBrowser> m_file_browser{};

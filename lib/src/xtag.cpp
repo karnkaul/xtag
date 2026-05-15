@@ -328,23 +328,6 @@ auto Formatter::join(std::string_view const item) const -> std::string {
 	return ret;
 }
 
-void Formatter::truncate_to(std::string& out, std::span<std::string const> items, int const max_count) const {
-	for (auto const& [index, item] : std::views::enumerate(items)) {
-		auto const count = index + 1;
-		if (count > max_count) {
-			join_to(out, truncator);
-			return;
-		}
-		join_to(out, item);
-	}
-}
-
-auto Formatter::truncate(std::span<std::string const> items, int const max_count) const -> std::string {
-	auto ret = std::string{};
-	truncate_to(ret, items, max_count);
-	return ret;
-}
-
 auto Formatter::format(ScanTag const& tag) const -> std::string {
 	if (tag.type == TagType::Primary || inherited_prefix.empty()) { return std::string{tag.value}; }
 	return std::format("{}{}", inherited_prefix, tag.value);

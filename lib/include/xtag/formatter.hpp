@@ -6,9 +6,6 @@ struct Formatter {
 	void join_to(std::string& out, std::string_view item) const;
 	[[nodiscard]] auto join(std::string_view item) const -> std::string;
 
-	void truncate_to(std::string& out, std::span<std::string const> items, int max_count) const;
-	[[nodiscard]] auto truncate(std::span<std::string const> items, int max_count) const -> std::string;
-
 	[[nodiscard]] auto format(ScanTag const& tag) const -> std::string;
 	void join_to(std::string& out, std::span<ScanTag const> tags) const;
 	[[nodiscard]] auto join(std::span<ScanTag const> tags) const -> std::string;

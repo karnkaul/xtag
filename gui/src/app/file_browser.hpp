@@ -14,7 +14,7 @@ class FileBrowser : public klib::Pinned {
 	explicit FileBrowser(EntryList list, int page_limit = max_page_limit_v);
 
 	[[nodiscard]] auto get_filtered() const -> std::span<klib::Ptr<Entry const> const> { return m_filtered; }
-	[[nodiscard]] auto get_selected() const -> klib::Ptr<Entry const> { return m_selected; }
+	[[nodiscard]] auto get_selected() const -> Entry const& { return *m_selected; }
 	[[nodiscard]] auto get_current_page() const -> Page;
 	[[nodiscard]] auto get_page_number() const -> int { return m_page_number; }
 	[[nodiscard]] auto get_page_count() const -> int { return m_page_count; }

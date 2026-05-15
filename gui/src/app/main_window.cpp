@@ -2,13 +2,18 @@
 #include "app/log.hpp"
 #include "klib/string/c_string.hpp"
 #include "klib/string/fixed_string.hpp"
-#include "xtag/formatter.hpp"
 #include <imgui.h>
 #include <array>
 #include <ranges>
 
 namespace xtag::gui {
 namespace {
+struct EntryData {
+	std::string tree_uri{};
+	std::string inspect_uri{};
+	std::vector<std::string> all_tags{};
+};
+
 constexpr auto page_limits_v = std::array{10, 20, 50, 99};
 
 auto to_data(Entry const& entry, fs::path const& root) -> EntryData {
@@ -24,10 +29,6 @@ auto to_data(Entry const& entry, fs::path const& root) -> EntryData {
 		ret.tree_uri = uri;
 	}
 
-	auto const formatter = Formatter{};
-	for (auto const& tag : entry.tags) { ret.all_tags.push_back(formatter.format(tag)); }
-	formatter.truncate_to(ret.short_tags, ret.all_tags, 3);
-
 	return ret;
 }
 
@@ -35,22 +36,26 @@ void populate_data(EntryList& list) {
 	for (auto& entry : list.entries) { entry.custom_payload = to_data(entry, list.path); }
 }
 
-[[nodiscard]] auto to_data(klib::Ptr<Entry const> selected) -> EntryData const& {
-	static auto const s_default = EntryData{};
-	if (!selected) { return s_default; }
-
-	auto const* data = std::any_cast<EntryData>(&selected->custom_payload);
-	if (!data) { return s_default; }
-
-	return *data;
-}
-
 constexpr auto tag_viewer_label_v = klib::CString{"tag_viewer"};
 
-void update_tag_viewer(EntryData const& entry) {
+constexpr auto get_tag_color(TagType const type) {
+	switch (type) {
+	case TagType::Primary: return ImVec4{0.0f, 0.8f, 1.0f, 1.0f};
+	case TagType::Inherited: return ImVec4{0.8f, 0.8f, 0.0f, 1.0f};
+	default: return ImVec4{0.5f, 0.5f, 0.5f, 1.0f};
+	}
+}
+
+void tag_text_colored(ScanTag const& tag) {
+	auto const color = get_tag_color(tag.type);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+	ImGui::TextColored(color, "%s", tag.value.data());
+}
+
+void update_tag_viewer(Entry const& entry) {
 	if (!ImGui::BeginPopup(tag_viewer_label_v.c_str())) { return; }
 	if (ImGui::BeginListBox("tags", {200.0f, 0.0f})) {
-		for (auto const& tag : entry.all_tags) { ImGui::TextUnformatted(tag.c_str()); }
+		for (auto const& tag : entry.tags) { tag_text_colored(tag); }
 		ImGui::EndListBox();
 	}
 	ImGui::EndPopup();
@@ -63,13 +68,13 @@ void MainWindow::update() {
 		return;
 	}
 
-	auto const& entry = to_data(m_file_browser->get_selected());
+	auto const& selected = m_file_browser->get_selected();
 
 	if (ImGui::BeginTable("top", 2, ImGuiTableFlags_Borders)) {
 		ImGui::TableNextRow();
 
 		ImGui::TableNextColumn();
-		update_inspector(entry);
+		update_inspector(selected);
 
 		ImGui::TableNextColumn();
 		update_scan_data();
@@ -84,10 +89,10 @@ void MainWindow::update() {
 		m_open_tag_viewer = false;
 		ImGui::OpenPopup(tag_viewer_label_v.c_str());
 	}
-	update_tag_viewer(entry);
+	update_tag_viewer(selected);
 
 	if (ImGui::BeginChild("list", {}, ImGuiChildFlags_Borders)) {
-		update_browser();
+		update_list(selected);
 		ImGui::EndChild();
 	}
 }
@@ -109,7 +114,6 @@ void MainWindow::update_scan_data() {
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(60.0f);
 	ImGui::DragInt("scan depth", &scan_data.depth, 1.0f, 0, 100);
-	// ImGui::SameLine();
 	if (ImGui::Button("refresh")) { m_signals->refresh_root_directory.dispatch(); }
 }
 
@@ -160,28 +164,38 @@ void MainWindow::update_pagination() {
 	}
 }
 
-void MainWindow::update_inspector(EntryData const& entry) {
-	ImGui::TextUnformatted(entry.inspect_uri.c_str());
-	ImGui::TextUnformatted(entry.short_tags.c_str());
+void MainWindow::update_inspector(Entry const& selected) {
+	static constexpr auto max_tags_v{3};
+	auto const& data = std::any_cast<EntryData const&>(selected.custom_payload);
+	ImGui::TextUnformatted(data.inspect_uri.c_str());
+	for (auto const& [index, tag] : std::views::enumerate(selected.tags)) {
+		if (index > 0) {
+			ImGui::SameLine();
+			ImGui::TextUnformatted("|");
+			ImGui::SameLine();
+		}
+		if (index >= max_tags_v) {
+			ImGui::TextUnformatted("...");
+			break;
+		}
+		tag_text_colored(tag);
+	}
 	if (ImGui::Button("view tags")) { m_open_tag_viewer = true; }
 }
 
-void MainWindow::update_browser() {
-	KLIB_ASSERT(m_file_browser);
-
-	auto const selected = m_file_browser->get_selected();
-	auto const entries = m_file_browser->get_current_page();
+void MainWindow::update_list(Entry const& selected) {
+	auto const page = m_file_browser->get_current_page();
 	auto const number_width = [&] {
 		auto ret = 1;
-		for (auto count = entries.size(); count >= 10; count /= 10) { ++ret; }
+		for (auto count = page.size(); count >= 10; count /= 10) { ++ret; }
 		return ret;
 	}();
-	for (auto const& [index, entry] : std::views::enumerate(entries)) {
-		auto const& data = to_data(entry);
+	for (auto const& [index, entry] : std::views::enumerate(page)) {
+		auto const& data = std::any_cast<EntryData const&>(entry->custom_payload);
 		auto const number = index + 1;
 		ImGui::TextUnformatted(klib::FixedString{"{: >{}}.", number, number_width}.c_str());
 		ImGui::SameLine();
-		if (ImGui::Selectable(data.tree_uri.c_str(), entry == selected)) { m_file_browser->select_entry(*entry); }
+		if (ImGui::Selectable(data.tree_uri.c_str(), entry == &selected)) { m_file_browser->select_entry(*entry); }
 	}
 }
 } // namespace xtag::gui

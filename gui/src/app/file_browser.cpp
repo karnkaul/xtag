@@ -1,9 +1,11 @@
 #include "app/file_browser.hpp"
+#include "xtag/panic.hpp"
 #include <algorithm>
 #include <ranges>
 
 namespace xtag::gui {
 FileBrowser::FileBrowser(EntryList list, int const page_limit) {
+	if (list.entries.empty()) { throw Panic{"FileBrowser: EntryList is empty"}; }
 	refresh(std::move(list));
 	repaginate(page_limit);
 }
