@@ -2,6 +2,7 @@
 #include "ui/controller.hpp"
 #include "ui/main_menu.hpp"
 #include "ui/main_window.hpp"
+#include "ui/modal/modal.hpp"
 #include "xtag/instance.hpp"
 
 namespace xtag::gui::ui {
@@ -23,6 +24,8 @@ class Controller : public ui::IController, public klib::Pinned {
 
 	void refresh_root_directory() final;
 
+	void open_test_modal() final;
+
   private:
 	klib::Ptr<Instance> m_instance{};
 
@@ -31,5 +34,7 @@ class Controller : public ui::IController, public klib::Pinned {
 
 	fs::path m_root{};
 	State m_state{State::Running};
+
+	Modal m_test_modal{};
 };
 } // namespace xtag::gui::ui

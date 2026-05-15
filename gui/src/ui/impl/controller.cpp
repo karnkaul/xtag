@@ -37,6 +37,8 @@ void Controller::update() {
 
 	m_main_window.update();
 
+	if constexpr (klib::debug_v) { m_test_modal.update(); }
+
 	ImGui::End();
 }
 
@@ -76,5 +78,9 @@ void Controller::refresh_root_directory() {
 	}
 
 	m_main_window.set_list(std::move(*result));
+}
+
+void Controller::open_test_modal() {
+	if constexpr (klib::debug_v) { m_test_modal.set_should_open(); }
 }
 } // namespace xtag::gui::ui
