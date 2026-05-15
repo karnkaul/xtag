@@ -1,6 +1,7 @@
 #pragma once
 #include "klib/enum/bitops.hpp"
 #include "klib/enum/name.hpp"
+#include <any>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -58,8 +59,15 @@ enum class TagType : std::int8_t {
 	None = 0,
 	Primary = 1 << 0,
 	Inherited = 1 << 1,
+	Untagged = 1 << 2,
 };
 [[nodiscard]] constexpr auto enable_enum_bitops(TagType /*unused*/) { return true; }
+inline auto const tag_type_name_map = klib::EnumNameMap<TagType>{
+	{TagType::None, "None"},
+	{TagType::Primary, "Primary"},
+	{TagType::Inherited, "Inherited"},
+	{TagType::Untagged, "Untagged"},
+};
 
 struct ScanTag {
 	using Type = TagType;
@@ -76,12 +84,37 @@ enum class EntryType : std::int8_t {
 	File = 1 << 1,
 };
 [[nodiscard]] constexpr auto enable_enum_bitops(EntryType /*unused*/) { return true; }
+inline auto const entry_type_name_map = klib::EnumNameMap<EntryType>{
+	{EntryType::None, "None"},
+	{EntryType::Directory, "Directory"},
+	{EntryType::File, "File"},
+};
+
+struct EntryOld {
+	using Type = EntryType;
+
+	void sort_recursive();
+
+	Type type{};
+	fs::path path{};
+	std::vector<ScanTag> tags{};
+	std::vector<EntryOld> subentries{};
+	std::any custom_payload{};
+};
 
 struct Entry {
 	using Type = EntryType;
 
-	fs::path path{};
-	std::vector<ScanTag> scan_tags{};
 	Type type{};
+	fs::path path{};
+	std::vector<ScanTag> tags{};
+	std::any custom_payload{};
+};
+
+struct EntryList {
+	void sort_entries();
+
+	fs::path path{};
+	std::vector<Entry> entries{};
 };
 } // namespace xtag

@@ -16,6 +16,7 @@ jobs:
       - name: init
         run: |
             uname -m
+            sudo apt update -yqq && sudo apt install -yqq xorg-dev mesa-common-dev libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules
             sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 10
             sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 10
       - name: configure
@@ -35,7 +36,7 @@ jobs:
       - name: init
         run: |
             uname -m
-            sudo apt update -yqq && sudo apt install -yqq clang-20
+            sudo apt update -yqq && sudo apt install -yqq clang-20 xorg-dev mesa-common-dev libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules
             sudo update-alternatives --remove-all clang++
             sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 10
             sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 10
@@ -56,6 +57,7 @@ jobs:
       - name: init
         run: |
             uname -m
+            sudo apt update -yqq && sudo apt install -yqq xorg-dev mesa-common-dev libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules
             sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 10
             sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 10
       - name: configure
@@ -75,7 +77,7 @@ jobs:
       - name: init
         run: |
             uname -m
-            sudo apt update -yqq && sudo apt install -yqq clang-20
+            sudo apt update -yqq && sudo apt install -yqq clang-20 xorg-dev mesa-common-dev libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules
             sudo update-alternatives --remove-all clang++
             sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 10
             sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 10

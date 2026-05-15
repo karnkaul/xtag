@@ -1,0 +1,12 @@
+#include "ui/main_menu.hpp"
+#include <imgui.h>
+
+namespace xtag::gui::ui {
+void MainMenu::update() {
+	if (ImGui::BeginMenu("File")) {
+		ImGui::Separator();
+		if (ImGui::MenuItem("Quit")) { m_controller->shutdown(); }
+		ImGui::EndMenu();
+	}
+}
+} // namespace xtag::gui::ui

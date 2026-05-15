@@ -11,7 +11,7 @@ class Scan : public Command {
 
 	std::string_view m_path{"."};
 	std::vector<std::string_view> m_tags{};
-	std::string_view m_entry_type{};
+	bool m_include_files{};
 	int m_depth{10};
 };
 } // namespace xtag::cli::command

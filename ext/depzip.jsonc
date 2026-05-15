@@ -11,6 +11,10 @@
     {
       "uri": "karnkaul/clap",
       "branch": "v0.1.1"
+    },
+    {
+      "uri": "karnkaul/gvdi",
+      "branch": "v0.3.3"
     }
   ]
 }

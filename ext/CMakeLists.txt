@@ -17,3 +17,8 @@ if(NOT TARGET clap::clap)
   message(STATUS "[clap]")
   add_subdirectory(src/clap)
 endif()
+
+if(NOT TARGET gvdi::gvdi)
+  message(STATUS "[gvdi]")
+  add_subdirectory(src/gvdi)
+endif()

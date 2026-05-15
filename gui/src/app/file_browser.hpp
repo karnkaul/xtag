@@ -1,0 +1,42 @@
+#pragma once
+#include "klib/base_types.hpp"
+#include "klib/ptr.hpp"
+#include "xtag/types.hpp"
+
+namespace xtag::gui {
+class FileBrowser : public klib::Pinned {
+  public:
+	using Page = std::span<klib::Ptr<Entry const> const>;
+
+	static constexpr auto min_page_limit_v{10};
+	static constexpr auto max_page_limit_v{1000};
+
+	explicit FileBrowser(EntryList list, int page_limit = max_page_limit_v);
+
+	[[nodiscard]] auto get_filtered() const -> std::span<klib::Ptr<Entry const> const> { return m_filtered; }
+	[[nodiscard]] auto get_selected() const -> Entry const& { return *m_selected; }
+	[[nodiscard]] auto get_current_page() const -> Page;
+	[[nodiscard]] auto get_page_number() const -> int { return m_page_number; }
+	[[nodiscard]] auto get_page_count() const -> int { return m_page_count; }
+	[[nodiscard]] auto get_page_limit() const -> int { return m_page_limit; }
+
+	void refresh(EntryList list);
+	void repaginate(int page_limit);
+
+	auto select_entry(Entry const& subentry) -> bool;
+	auto set_page_number(int page_number) -> bool;
+
+	void apply_filter(std::string_view allowlist, std::string_view blocklist);
+
+  private:
+	[[nodiscard]] auto find_entry(fs::path const& path) const -> klib::Ptr<Entry const>;
+
+	EntryList m_list{};
+	std::vector<klib::Ptr<Entry const>> m_filtered{};
+
+	klib::Ptr<Entry const> m_selected{};
+	int m_page_limit{max_page_limit_v};
+	int m_page_number{};
+	int m_page_count{};
+};
+} // namespace xtag::gui

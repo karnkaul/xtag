@@ -1,12 +1,11 @@
 #include "command/scan.hpp"
-#include "xtag/format.hpp"
-#include <algorithm>
+#include "xtag/formatter.hpp"
 
 namespace xtag::cli::command {
 auto Scan::get_parameters() -> std::vector<clap::Parameter> {
 	return {
+		clap::named_flag(m_include_files, "f,include-files"),
 		clap::named_option(m_depth, "d,depth", "iteration depth (default: 10)"),
-		clap::named_option(m_entry_type, "t,type", "entry type (d|f)"),
 		clap::positional_required(m_path, "PATH"),
 		clap::positional_list(m_tags, "TAGS"),
 	};
@@ -14,27 +13,18 @@ auto Scan::get_parameters() -> std::vector<clap::Parameter> {
 
 auto Scan::execute(Instance& instance) -> ExitCode {
 	auto info = ScanInfo{
-		.filter = ScanFilter{.tags = m_tags},
+		.filter = ScanFilter{.tags = m_tags, .include_files = m_include_files},
 		.depth = m_depth,
 	};
 
-	if (m_entry_type == "d") {
-		info.filter.entry_type = EntryType::Directory;
-	} else if (m_entry_type == "f") {
-		info.filter.entry_type = EntryType::File;
-	}
-
 	auto const root = fs::absolute(m_path);
-	auto entries = instance.scan_tagged(root, info);
-	std::ranges::sort(entries, [](Entry const& a, Entry const& b) { return a.path < b.path; });
+	auto result = instance.scan_directory(root, info);
+	if (!result) { return handle_error(result.error()); }
 
-	auto format_params = FormatParams{
-		.path_header = "relative path",
-		.transform_path = [&](fs::path const& path) { return fs::relative(path, root); },
-	};
-
-	auto const table = format_table(entries, std::move(format_params));
+	result->sort_entries();
+	auto const table = Formatter{}.format_table(*result);
 	std::println("{}", table);
+
 	return ExitCode::Success;
 }
 } // namespace xtag::cli::command
