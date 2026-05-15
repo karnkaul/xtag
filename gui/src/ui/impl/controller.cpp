@@ -9,6 +9,11 @@ namespace {
 	ret.filter.tag_type |= TagType::Untagged;
 	return ret;
 }
+
+template <typename T>
+[[nodiscard]] auto is_ready(std::future<T> const& future) {
+	return future.valid() && future.wait_for(0s) == std::future_status::ready;
+}
 } // namespace
 
 void Controller::set_styles(ImGuiStyle& style) { style.CellPadding = {6.0f, 6.0f}; }
@@ -17,6 +22,7 @@ void Controller::initialize(Services const& services) {
 	Object::initialize(services);
 
 	m_instance = &services.get<Instance>();
+	m_delta_time = &services.get<DeltaTime>();
 
 	m_main_menu.initialize(services);
 	m_main_window.initialize(services);
@@ -36,8 +42,10 @@ void Controller::update() {
 	ImGui::Begin("main", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
 	m_main_window.update();
+	m_loading_modal.update(m_delta_time->get_dt());
+	poll_future();
 
-	if constexpr (klib::debug_v) { m_test_modal.update(); }
+	if constexpr (klib::debug_v) { m_test_modal.update(m_delta_time->get_dt()); }
 
 	ImGui::End();
 }
@@ -49,7 +57,7 @@ void Controller::on_drop(fs::path const& root) {
 }
 
 void Controller::shutdown() {
-	// TODO: cancel async work.
+	if (m_future.valid()) { m_future.wait(); }
 	m_state = State::Finished;
 }
 
@@ -66,7 +74,18 @@ void Controller::refresh_root_directory() {
 	}
 
 	auto const scan_info = to_scan_info(m_main_window.scan_data);
-	auto result = m_instance->scan_directory(m_root, scan_info);
+	m_future = std::async([this, scan_info] { return m_instance->scan_directory(m_root, scan_info); });
+	m_loading_modal.set_should_open();
+}
+
+void Controller::open_test_modal() {
+	if constexpr (klib::debug_v) { m_test_modal.set_should_open(); }
+}
+
+void Controller::poll_future() {
+	if (!is_ready(m_future)) { return; }
+
+	auto result = m_future.get();
 	if (!result) {
 		log.error("TODO: failed to load directory: '{}'", m_root.generic_string());
 		return;
@@ -78,9 +97,6 @@ void Controller::refresh_root_directory() {
 	}
 
 	m_main_window.set_list(std::move(*result));
-}
-
-void Controller::open_test_modal() {
-	if constexpr (klib::debug_v) { m_test_modal.set_should_open(); }
+	m_loading_modal.set_should_close();
 }
 } // namespace xtag::gui::ui

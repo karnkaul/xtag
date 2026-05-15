@@ -1,6 +1,7 @@
 #pragma once
 #include "clap/result.hpp"
 #include "gvdi/app.hpp"
+#include "service/delta_time.hpp"
 #include "service/services.hpp"
 #include "ui/impl/controller.hpp"
 #include "xtag/instance.hpp"
@@ -21,6 +22,7 @@ class App : public gvdi::App {
 
 	Services m_services{};
 	Instance m_instance{};
+	DeltaTime m_delta_time{};
 
 	ui::Controller m_controller{};
 };

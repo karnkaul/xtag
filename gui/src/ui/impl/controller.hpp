@@ -1,9 +1,11 @@
 #pragma once
+#include "service/delta_time.hpp"
 #include "ui/controller.hpp"
 #include "ui/main_menu.hpp"
 #include "ui/main_window.hpp"
-#include "ui/modal/modal.hpp"
+#include "ui/modal/loading.hpp"
 #include "xtag/instance.hpp"
+#include <future>
 
 namespace xtag::gui::ui {
 class Controller : public ui::IController, public klib::Pinned {
@@ -27,12 +29,17 @@ class Controller : public ui::IController, public klib::Pinned {
 	void open_test_modal() final;
 
   private:
+	void poll_future();
+
 	klib::Ptr<Instance> m_instance{};
+	klib::Ptr<DeltaTime const> m_delta_time{};
 
 	ui::MainMenu m_main_menu{*this};
 	ui::MainWindow m_main_window{*this};
 
 	fs::path m_root{};
+	std::future<Result<EntryList>> m_future{};
+	LoadingModal m_loading_modal{};
 	State m_state{State::Running};
 
 	Modal m_test_modal{};

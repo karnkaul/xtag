@@ -14,7 +14,7 @@ void Modal::set_should_open(bool const should_open) {
 
 void Modal::set_should_close(bool const should_close) { m_should_close = should_close; }
 
-void Modal::update() {
+void Modal::update(Seconds const dt) {
 	if (m_should_open) {
 		m_should_open = false;
 		ImGui::OpenPopup(label.c_str());
@@ -23,12 +23,12 @@ void Modal::update() {
 	auto const center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, {0.5f, 0.5f});
 	if (!ImGui::BeginPopupModal(label.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) { return; }
-	on_update();
+	on_update(dt);
 	if (m_should_close) { ImGui::CloseCurrentPopup(); }
 	ImGui::EndPopup();
 }
 
-void Modal::on_update() {
+void Modal::on_update(Seconds const /*dt*/) {
 	ImGui::TextUnformatted("<Add content here>");
 	ImGui::Separator();
 	if (ImGui::Button("Close")) { set_should_close(); }

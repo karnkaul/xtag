@@ -22,6 +22,8 @@ void App::stage_create() {
 	gvdi::App::stage_create();
 
 	ui::Controller::set_styles(ImGui::GetStyle());
+
+	m_delta_time.restart();
 }
 
 void App::on_path_drop(std::span<char const* const> paths) {
@@ -30,6 +32,7 @@ void App::on_path_drop(std::span<char const* const> paths) {
 }
 
 void App::update() {
+	m_delta_time.update();
 	m_controller.update();
 	if (m_controller.get_state() == ui::Controller::State::Finished) { set_should_close_window(true); }
 }
@@ -53,6 +56,7 @@ auto App::parse_args(int argc, char const* const* argv) -> clap::Result {
 
 void App::initialize() {
 	m_services.attach(&m_instance);
+	m_services.attach(&m_delta_time);
 
 	m_controller.initialize(m_services);
 }

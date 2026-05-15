@@ -9,8 +9,9 @@ using SystemClock = std::chrono::system_clock;
 
 using Seconds = std::chrono::duration<float>;
 
-[[nodiscard]] inline auto compute_dt(SteadyClock::time_point& out) -> Seconds {
-	auto const now = SteadyClock::now();
+template <typename ClockT = SteadyClock>
+[[nodiscard]] auto compute_dt(typename ClockT::time_point& out) -> Seconds {
+	auto const now = ClockT::now();
 	auto const ret = now - out;
 	out = now;
 	return ret;
