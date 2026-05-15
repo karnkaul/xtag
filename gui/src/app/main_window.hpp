@@ -24,7 +24,7 @@ class MainWindow : public Object {
 	void update_scan_data();
 	void update_filters();
 	void update_pagination();
-	void update_inspector(EntryModel const& entry);
+	void update_inspector(EntryData const& entry);
 	void update_browser();
 
 	std::string m_root_directory{};
