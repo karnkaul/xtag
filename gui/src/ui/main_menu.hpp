@@ -1,8 +1,7 @@
 #pragma once
-#include "app/controller.hpp"
-#include "app/object.hpp"
+#include "ui/controller.hpp"
 
-namespace xtag::gui {
+namespace xtag::gui::ui {
 class MainMenu : public Object {
   public:
 	explicit MainMenu(IController& controller) : m_controller(&controller) {}
@@ -12,4 +11,4 @@ class MainMenu : public Object {
   private:
 	klib::Ptr<IController> m_controller{};
 };
-} // namespace xtag::gui
+} // namespace xtag::gui::ui

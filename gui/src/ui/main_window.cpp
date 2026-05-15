@@ -1,4 +1,4 @@
-#include "app/main_window.hpp"
+#include "ui/main_window.hpp"
 #include "app/log.hpp"
 #include "klib/string/c_string.hpp"
 #include "klib/string/fixed_string.hpp"
@@ -6,7 +6,7 @@
 #include <array>
 #include <ranges>
 
-namespace xtag::gui {
+namespace xtag::gui::ui {
 namespace {
 struct EntryData {
 	std::string tree_uri{};
@@ -198,4 +198,4 @@ void MainWindow::update_list(Entry const& selected) {
 		if (ImGui::Selectable(data.tree_uri.c_str(), entry == &selected)) { m_file_browser->select_entry(*entry); }
 	}
 }
-} // namespace xtag::gui
+} // namespace xtag::gui::ui

@@ -1,7 +1,7 @@
-#include "app/main_menu.hpp"
+#include "ui/main_menu.hpp"
 #include <imgui.h>
 
-namespace xtag::gui {
+namespace xtag::gui::ui {
 void MainMenu::update() {
 	if (ImGui::BeginMenu("File")) {
 		ImGui::Separator();
@@ -9,4 +9,4 @@ void MainMenu::update() {
 		ImGui::EndMenu();
 	}
 }
-} // namespace xtag::gui
+} // namespace xtag::gui::ui

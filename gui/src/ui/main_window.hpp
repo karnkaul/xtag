@@ -1,12 +1,11 @@
 #pragma once
-#include "app/controller.hpp"
 #include "app/file_browser.hpp"
-#include "app/object.hpp"
-#include "app/scan_data.hpp"
 #include "klib/string/str_buf.hpp"
+#include "ui/controller.hpp"
+#include "ui/scan_data.hpp"
 #include <optional>
 
-namespace xtag::gui {
+namespace xtag::gui::ui {
 class MainWindow : public Object {
   public:
 	explicit MainWindow(IController& controller) : m_controller(&controller) {}
@@ -37,4 +36,4 @@ class MainWindow : public Object {
 	Filter m_filter{};
 	bool m_open_tag_viewer{};
 };
-} // namespace xtag::gui
+} // namespace xtag::gui::ui
