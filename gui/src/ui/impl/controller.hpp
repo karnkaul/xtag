@@ -29,6 +29,7 @@ class Controller : public ui::IController, public klib::Pinned {
 	ui::MainMenu m_main_menu{*this};
 	ui::MainWindow m_main_window{*this};
 
+	fs::path m_root{};
 	State m_state{State::Running};
 };
 } // namespace xtag::gui::ui
