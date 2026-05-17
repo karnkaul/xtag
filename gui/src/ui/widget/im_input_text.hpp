@@ -16,6 +16,10 @@ class ImInputText {
 		return ImGui::InputText(label.c_str(), m_buffer.data(), m_buffer.size(), flags);
 	}
 
+	void clear() {
+		for (auto& c : m_buffer) { c = '\0'; }
+	}
+
 	[[nodiscard]] auto as_view() const -> std::string_view { return m_buffer.data(); }
 
 	[[nodiscard]] auto get_max_size() const -> std::size_t { return m_buffer.size(); }

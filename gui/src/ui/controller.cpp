@@ -78,6 +78,17 @@ void Controller::refresh_root_directory() {
 	m_loading_modal.set_should_open();
 }
 
+void Controller::replace_tags(fs::path const& path, std::span<std::string_view const> tags) {
+	auto const result = m_instance->replace_tags(path, tags);
+	if (!result) {
+		log.error("TODO: failed to replace tags on '{}': {}", path.generic_string(), result.error().message);
+		return;
+	}
+
+	log.info("tags replaced successfully: '{}', refreshing root directory...", path.generic_string());
+	refresh_root_directory();
+}
+
 void Controller::open_test_modal() {
 	if constexpr (klib::debug_v) { m_test_modal.set_should_open(); }
 }

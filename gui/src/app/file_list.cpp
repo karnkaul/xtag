@@ -83,7 +83,7 @@ void FileList::apply_filter(std::string_view const allowlist, std::string_view c
 	};
 
 	m_filtered.clear();
-	for (auto const& entry : m_list.entries) {
+	for (auto& entry : m_list.entries) {
 		if (!should_include(entry)) { continue; }
 		m_filtered.emplace_back(&entry);
 	}

@@ -23,8 +23,8 @@ class Controller : public ui::IDispatch, public klib::Pinned {
 	void on_window_close() { shutdown(); }
 
 	void shutdown() final;
-
 	void refresh_root_directory() final;
+	void replace_tags(fs::path const& path, std::span<std::string_view const> tags) final;
 
 	void open_test_modal() final;
 
