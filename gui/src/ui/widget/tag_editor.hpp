@@ -4,7 +4,6 @@
 #include <vector>
 
 namespace xtag::gui::ui::widget {
-
 class TagEditor {
   public:
 	static constexpr auto label_v = klib::CString{"tag_editor"};

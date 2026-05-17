@@ -97,6 +97,7 @@ void FileList::clear_pointers(std::size_t const reserve) {
 	m_filtered.reserve(reserve);
 	m_path_map.reserve(reserve);
 }
+
 auto FileList::find_entry(fs::path const& path) const -> EntryView {
 	auto const it = m_path_map.find(path);
 	if (it == m_path_map.end()) { return {}; }
