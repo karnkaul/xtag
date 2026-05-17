@@ -18,7 +18,7 @@ class FileList : public klib::Pinned {
 	explicit FileList(EntryList list, int page_limit = max_page_limit_v);
 
 	[[nodiscard]] auto get_filtered() const -> std::span<klib::Ptr<Entry const> const> { return m_filtered; }
-	[[nodiscard]] auto get_selected() const -> Entry const& { return *m_selected; }
+	[[nodiscard]] auto get_selected() const -> Entry const& { return *m_selected.entry; }
 	[[nodiscard]] auto get_current_page() const -> Page;
 	[[nodiscard]] auto get_page_number() const -> int { return m_page_number; }
 	[[nodiscard]] auto get_page_count() const -> int { return m_page_count; }
@@ -33,14 +33,19 @@ class FileList : public klib::Pinned {
 	void apply_filter(std::string_view allowlist, std::string_view blocklist);
 
   private:
+	struct EntryView {
+		klib::Ptr<Entry const> entry{};
+		int index{-1};
+	};
+
 	void clear_pointers(std::size_t reserve = 0);
-	[[nodiscard]] auto find_entry(fs::path const& path) const -> klib::Ptr<Entry const>;
+	[[nodiscard]] auto find_entry(fs::path const& path) const -> EntryView;
 
 	EntryList m_list{};
-	std::unordered_map<fs::path, klib::Ptr<Entry const>> m_path_map{};
+	std::unordered_map<fs::path, EntryView> m_path_map{};
 	std::vector<klib::Ptr<Entry const>> m_filtered{};
 
-	klib::Ptr<Entry const> m_selected{};
+	EntryView m_selected{};
 	int m_page_limit{max_page_limit_v};
 	int m_page_number{};
 	int m_page_count{};
