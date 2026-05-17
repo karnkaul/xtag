@@ -23,11 +23,21 @@ auto FileList::get_current_page() const -> Page {
 }
 
 void FileList::refresh(EntryList list) {
+	auto const was_selected = m_selected ? m_selected->path : fs::path{};
 	KLIB_ASSERT(!list.entries.empty());
-	m_list = std::move(list);
-	m_filtered.clear();
-	for (auto const& entry : m_list.entries) { m_filtered.emplace_back(&entry); }
-	m_selected = m_filtered.front();
+	clear_pointers(list.entries.size());
+	KLIB_ASSERT(m_filtered.empty() && m_path_map.empty() && !m_selected);
+
+	m_list = std::move(list); // henceforth entries in m_list must remain address-stable.
+
+	for (auto const& entry : m_list.entries) {
+		m_filtered.emplace_back(&entry);
+		m_path_map.insert_or_assign(entry.path, &entry);
+	}
+
+	if (!was_selected.empty()) { m_selected = find_entry(was_selected); }
+	if (!m_selected) { m_selected = m_filtered.front(); }
+
 	repaginate(m_page_limit);
 }
 
@@ -76,9 +86,16 @@ void FileList::apply_filter(std::string_view const allowlist, std::string_view c
 	repaginate(m_page_limit);
 }
 
+void FileList::clear_pointers(std::size_t const reserve) {
+	m_selected = {};
+	m_path_map.clear();
+	m_filtered.clear();
+	m_filtered.reserve(reserve);
+	m_path_map.reserve(reserve);
+}
 auto FileList::find_entry(fs::path const& path) const -> klib::Ptr<Entry const> {
-	auto const it = std::ranges::find_if(m_list.entries, [&path](Entry const& e) { return e.path == path; });
-	if (it == m_list.entries.end()) { return nullptr; }
-	return &*it;
+	auto const it = m_path_map.find(path);
+	if (it == m_path_map.end()) { return nullptr; }
+	return it->second;
 }
 } // namespace xtag::gui

@@ -2,6 +2,7 @@
 #include "klib/base_types.hpp"
 #include "klib/ptr.hpp"
 #include "xtag/types.hpp"
+#include <unordered_map>
 
 namespace xtag::gui {
 class FileList : public klib::Pinned {
@@ -32,9 +33,11 @@ class FileList : public klib::Pinned {
 	void apply_filter(std::string_view allowlist, std::string_view blocklist);
 
   private:
+	void clear_pointers(std::size_t reserve = 0);
 	[[nodiscard]] auto find_entry(fs::path const& path) const -> klib::Ptr<Entry const>;
 
 	EntryList m_list{};
+	std::unordered_map<fs::path, klib::Ptr<Entry const>> m_path_map{};
 	std::vector<klib::Ptr<Entry const>> m_filtered{};
 
 	klib::Ptr<Entry const> m_selected{};
