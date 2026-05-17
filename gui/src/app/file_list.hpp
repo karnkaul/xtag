@@ -4,14 +4,17 @@
 #include "xtag/types.hpp"
 
 namespace xtag::gui {
-class FileBrowser : public klib::Pinned {
+class FileList : public klib::Pinned {
   public:
-	using Page = std::span<klib::Ptr<Entry const> const>;
+	struct Page {
+		std::span<klib::Ptr<Entry const> const> entries{};
+		int offset_from_start{};
+	};
 
 	static constexpr auto min_page_limit_v{10};
 	static constexpr auto max_page_limit_v{1000};
 
-	explicit FileBrowser(EntryList list, int page_limit = max_page_limit_v);
+	explicit FileList(EntryList list, int page_limit = max_page_limit_v);
 
 	[[nodiscard]] auto get_filtered() const -> std::span<klib::Ptr<Entry const> const> { return m_filtered; }
 	[[nodiscard]] auto get_selected() const -> Entry const& { return *m_selected; }

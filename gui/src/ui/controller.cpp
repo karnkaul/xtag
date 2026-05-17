@@ -1,9 +1,9 @@
-#include "ui/impl/controller.hpp"
+#include "ui/controller.hpp"
 #include "app/log.hpp"
 
 namespace xtag::gui::ui {
 namespace {
-[[nodiscard]] auto to_scan_info(ui::ScanData const& data) -> ScanInfo {
+[[nodiscard]] auto to_scan_info(ui::widget::ScanData const& data) -> ScanInfo {
 	auto ret = ScanInfo{.depth = data.depth};
 	ret.filter.include_files = data.include_files;
 	ret.filter.tag_type |= TagType::Untagged;

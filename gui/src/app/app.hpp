@@ -3,7 +3,7 @@
 #include "gvdi/app.hpp"
 #include "service/delta_time.hpp"
 #include "service/services.hpp"
-#include "ui/impl/controller.hpp"
+#include "ui/controller.hpp"
 #include "xtag/instance.hpp"
 
 namespace xtag::gui {
@@ -13,6 +13,8 @@ class App : public gvdi::App {
 
   private:
 	void stage_create() final;
+
+	auto create_glfw_window() -> GLFWwindow* final;
 
 	void on_path_drop(std::span<char const* const> paths) final;
 	void update() final;

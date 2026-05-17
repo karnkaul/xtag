@@ -26,6 +26,11 @@ void App::stage_create() {
 	m_delta_time.restart();
 }
 
+auto App::create_glfw_window() -> GLFWwindow* {
+	auto const title = std::format("xtag {}", build_version_str);
+	return gvdi::App::create_windowed_window(title.c_str());
+}
+
 void App::on_path_drop(std::span<char const* const> paths) {
 	if (paths.empty()) { return; }
 	m_controller.on_drop(paths.front());

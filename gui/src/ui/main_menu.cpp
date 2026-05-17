@@ -6,13 +6,13 @@ namespace xtag::gui::ui {
 void MainMenu::update() {
 	if (ImGui::BeginMenu("File")) {
 		ImGui::Separator();
-		if (ImGui::MenuItem("Quit")) { m_controller->shutdown(); }
+		if (ImGui::MenuItem("Quit")) { m_dispatch->shutdown(); }
 		ImGui::EndMenu();
 	}
 
 	if constexpr (klib::debug_v) {
 		if (ImGui::BeginMenu("Debug")) {
-			if (ImGui::MenuItem("Test modal")) { m_controller->open_test_modal(); }
+			if (ImGui::MenuItem("Test modal")) { m_dispatch->open_test_modal(); }
 			ImGui::EndMenu();
 		}
 	}
