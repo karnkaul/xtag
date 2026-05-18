@@ -1,8 +1,10 @@
+#include "detail/query_scanner.hpp"
 #include "detail/util.hpp"
 #include "klib/cli/text_table.hpp"
 #include "klib/debug/assert.hpp"
 #include "xtag/formatter.hpp"
 #include "xtag/instance.hpp"
+#include "xtag/query.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
 #include <filesystem>
@@ -383,6 +385,94 @@ auto Formatter::format_table(EntryList const& list) const -> std::string {
 	}
 	return table.serialize();
 }
+
+namespace query {
+namespace {
+class Parser {
+  public:
+	explicit Parser(std::string_view const text) {
+		auto scanner = Scanner{text};
+		auto token = Token{};
+		while (scanner.next(token)) { m_tokens.push_back(token); }
+	}
+
+	[[nodiscard]] auto operator()() -> Expression {
+		auto ret = Expression{};
+		while (!at_end()) { ret.predicates.push_back(parse_predicate()); }
+		return ret;
+	}
+
+  private:
+	[[nodiscard]] auto at_end() const -> bool { return m_cursor >= m_tokens.size(); }
+
+	[[nodiscard]] auto peek_next(std::size_t const offset = 1) const -> Token {
+		if (m_cursor + offset >= m_tokens.size()) { return {}; }
+		return m_tokens.at(m_cursor + offset);
+	}
+
+	[[nodiscard]] auto get_current() const -> Token { return peek_next(0); }
+
+	auto advance() -> Token {
+		auto ret = get_current();
+		++m_cursor;
+		return ret;
+	}
+
+	[[nodiscard]] auto parse_predicate() -> Predicate {
+		auto ret = Predicate{};
+		auto token = advance();
+		ret.pattern = token.lexeme;
+
+		token = get_current();
+		if (token.type == TokenType::Equals) {
+			advance(); // =
+			token = get_current();
+			parse_scope_to(ret, ret.pattern);
+			ret.pattern = token.lexeme;
+			advance(); // pattern
+		} else if (ret.pattern.starts_with("-")) {
+			ret.invert = true;
+			ret.pattern.remove_prefix(1);
+		}
+
+		return ret;
+	}
+
+	static void parse_scope_to(Predicate& out, std::string_view input) {
+		if (input.starts_with("-")) {
+			out.invert = true;
+			input.remove_prefix(1);
+		}
+
+		if (input == "f" || input == "filename") {
+			out.scope = Scope::Filename;
+		} else if (input == "t" || input == "tag") {
+			out.scope = Scope::Tag;
+		}
+	}
+
+	std::vector<Token> m_tokens{};
+	std::size_t m_cursor{};
+};
+} // namespace
+
+auto Predicate::is_match(std::string_view const filename, std::span<ScanTag const> tags) const -> bool {
+	auto ret = false;
+	if ((scope & Scope::Tag) == Scope::Tag) {
+		ret = std::ranges::any_of(tags, [this](ScanTag const& tag) { return tag.value.contains(pattern); });
+	}
+	if (!ret && (scope & Scope::Filename) == Scope::Filename) { ret = filename.contains(pattern); }
+	if (invert) { ret = !ret; }
+	return ret;
+}
+
+auto Expression::is_match(std::string_view const filename, std::span<ScanTag const> tags) const -> bool {
+	if (predicates.empty()) { return true; }
+	return std::ranges::all_of(predicates, [&](Predicate const& p) { return p.is_match(filename, tags); });
+}
+} // namespace query
+
+auto query::parse(std::string_view const text) -> Expression { return Parser{text}(); }
 } // namespace xtag
 
 auto xtag::format_error(Error::Type const type, std::string_view const message) -> std::string {
