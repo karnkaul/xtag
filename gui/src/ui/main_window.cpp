@@ -1,6 +1,7 @@
 #include "ui/main_window.hpp"
 #include "app/log.hpp"
 #include "klib/string/c_string.hpp"
+#include "xtag/query.hpp"
 #include <imgui.h>
 #include <ranges>
 
@@ -15,13 +16,13 @@ auto to_data(Entry const& entry, fs::path const& root) -> EntryData {
 	auto ret = EntryData{};
 
 	auto const filename = entry.path.filename().string();
-	auto const uri = fs::relative(entry.path, root).generic_string();
+	auto uri = fs::relative(entry.path, root).generic_string();
 	if (entry.type == EntryType::Directory) {
 		ret.inspect_uri = std::format("directory: {}", filename);
 		ret.tree_uri = std::format("{}/", uri);
 	} else {
 		ret.inspect_uri = std::format("file: {}", filename);
-		ret.tree_uri = uri;
+		ret.tree_uri = std::move(uri);
 	}
 
 	return ret;
@@ -40,8 +41,8 @@ void MainWindow::update() {
 
 	ImGui::TextUnformatted(m_root_directory.c_str());
 
-	auto& selected = m_file_browser->list.get_selected();
-	auto& data = std::any_cast<EntryData&>(selected.custom_payload);
+	auto const& selected = m_file_browser->list.get_selected();
+	auto const& data = std::any_cast<EntryData const&>(selected.custom_payload);
 
 	auto refresh_root_directory = false;
 	auto replace_tags = false;
@@ -61,7 +62,8 @@ void MainWindow::update() {
 		ImGui::EndTable();
 	}
 
-	m_file_browser->update_filter();
+	auto query = std::string_view{};
+	if (m_file_browser->update_filter(query)) { set_filter(query); }
 	m_file_browser->update_pagination();
 
 	if (m_tag_editor.update() && should_replace_tags()) { replace_tags = true; }
@@ -88,6 +90,19 @@ void MainWindow::set_list(EntryList list) {
 		m_file_browser->list.refresh(std::move(list));
 	}
 	log.debug("Directory loaded successfully: '{}'", m_root_directory);
+}
+
+void MainWindow::set_filter(std::string_view const query) {
+	if (query.empty()) {
+		m_file_browser->list.clear_filter();
+	} else {
+		auto const expression = query::parse(query);
+		auto const should_include = [&](Entry const& entry) {
+			auto const& data = std::any_cast<EntryData const&>(entry.custom_payload);
+			return expression.is_match(data.tree_uri, entry.tags);
+		};
+		m_file_browser->list.apply_filter(should_include);
+	}
 }
 
 void MainWindow::update_current_page() {

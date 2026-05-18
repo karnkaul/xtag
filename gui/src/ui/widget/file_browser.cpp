@@ -46,9 +46,12 @@ void FileBrowser::update_pagination() {
 	}
 }
 
-void FileBrowser::update_filter() {
-	filter.update();
-	if (ImGui::Button("apply")) { list.apply_filter(filter.allow.as_view(), filter.block.as_view()); }
+auto FileBrowser::update_filter(std::string_view& out_query) -> bool {
+	ImGui::SetNextItemWidth(150.0f);
+	m_query_input.update("query");
+	out_query = m_query_input.as_view();
+	ImGui::SameLine();
+	return ImGui::Button("search");
 }
 
 void FileBrowser::update_number_width(FileList::Page const& current_page) {

@@ -17,6 +17,7 @@ class FileList : public klib::Pinned {
 
 	explicit FileList(EntryList list, int page_limit = max_page_limit_v);
 
+	[[nodiscard]] auto get_root() const -> fs::path const& { return m_list.path; }
 	[[nodiscard]] auto get_filtered() const -> std::span<klib::Ptr<Entry> const> { return m_filtered; }
 	[[nodiscard]] auto get_selected() const -> Entry& { return *m_selected.entry; }
 	[[nodiscard]] auto get_current_page() const -> Page;
@@ -30,7 +31,17 @@ class FileList : public klib::Pinned {
 	auto select_entry(Entry const& subentry) -> bool;
 	auto set_page_number(int page_number) -> bool;
 
-	void apply_filter(std::string_view allowlist, std::string_view blocklist);
+	template <typename PredT>
+	void apply_filter(PredT should_include) {
+		m_filtered.clear();
+		for (auto& entry : m_list.entries) {
+			if (!should_include(entry)) { continue; }
+			m_filtered.emplace_back(&entry);
+		}
+		repaginate(m_page_limit);
+	}
+
+	void clear_filter();
 
   private:
 	struct EntryView {

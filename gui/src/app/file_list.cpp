@@ -68,26 +68,8 @@ auto FileList::set_page_number(int const page_number) -> bool {
 	return true;
 }
 
-void FileList::apply_filter(std::string_view const allowlist, std::string_view const blocklist) {
-	auto const allows = std::ranges::to<std::vector>(std::views::split(allowlist, ','));
-	auto const blocks = std::ranges::to<std::vector>(std::views::split(blocklist, ','));
-
-	static auto const is_match = [](auto const& set, std::string_view const text) {
-		return std::ranges::any_of(set, [text](auto const& s) { return text.contains(std::string_view{s}); });
-	};
-
-	auto const should_include = [&](Entry const& entry) {
-		auto const path = fs::relative(entry.path, m_list.path).generic_string();
-		if (!blocks.empty() && is_match(blocks, path)) { return false; }
-		return allows.empty() || is_match(allows, path);
-	};
-
-	m_filtered.clear();
-	for (auto& entry : m_list.entries) {
-		if (!should_include(entry)) { continue; }
-		m_filtered.emplace_back(&entry);
-	}
-	repaginate(m_page_limit);
+void FileList::clear_filter() {
+	apply_filter([](auto const&...) { return true; });
 }
 
 void FileList::clear_pointers(std::size_t const reserve) {

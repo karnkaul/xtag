@@ -13,6 +13,7 @@ class MainWindow : public Object {
 	void update() final;
 
 	void set_list(EntryList list);
+	void set_filter(std::string_view query);
 
 	widget::ScanData scan_data{};
 
