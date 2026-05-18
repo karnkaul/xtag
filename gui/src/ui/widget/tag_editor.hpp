@@ -34,7 +34,7 @@ class TagEditor {
 	void update_new_tag();
 	[[nodiscard]] auto update_buttons() const -> bool;
 
-	void compute_replacement();
+	auto compute_replacement() -> bool;
 
 	List m_list{};
 	ImInputText m_input{};

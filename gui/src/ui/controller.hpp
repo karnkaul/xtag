@@ -1,7 +1,6 @@
 #pragma once
 #include "service/delta_time.hpp"
 #include "ui/dispatch.hpp"
-#include "ui/main_menu.hpp"
 #include "ui/main_window.hpp"
 #include "ui/modal/loading.hpp"
 #include "xtag/instance.hpp"
@@ -26,22 +25,18 @@ class Controller : public ui::IDispatch, public klib::Pinned {
 	void refresh_root_directory() final;
 	void replace_tags(fs::path const& path, std::span<std::string_view const> tags) final;
 
-	void open_test_modal() final;
-
   private:
 	void poll_future();
 
 	klib::Ptr<Instance> m_instance{};
 	klib::Ptr<DeltaTime const> m_delta_time{};
 
-	ui::MainMenu m_main_menu{*this};
+	std::shared_ptr<EntryList> m_entry_list{};
 	ui::MainWindow m_main_window{*this};
 
 	fs::path m_root{};
 	std::future<Result<EntryList>> m_future{};
 	LoadingModal m_loading_modal{};
 	State m_state{State::Running};
-
-	Modal m_test_modal{};
 };
 } // namespace xtag::gui::ui

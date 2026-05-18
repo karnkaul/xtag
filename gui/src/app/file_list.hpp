@@ -15,9 +15,9 @@ class FileList : public klib::Pinned {
 	static constexpr auto min_page_limit_v{10};
 	static constexpr auto max_page_limit_v{1000};
 
-	explicit FileList(EntryList list, int page_limit = max_page_limit_v);
+	explicit FileList(std::shared_ptr<EntryList const> list, int page_limit = max_page_limit_v);
 
-	[[nodiscard]] auto get_root() const -> fs::path const& { return m_list.path; }
+	[[nodiscard]] auto get_root() const -> fs::path const& { return m_list->path; }
 	[[nodiscard]] auto get_filtered() const -> std::span<klib::Ptr<Entry const> const> { return m_filtered; }
 	[[nodiscard]] auto get_selected() const -> Entry const& { return *m_selected.entry; }
 	[[nodiscard]] auto get_current_page() const -> Page;
@@ -25,7 +25,7 @@ class FileList : public klib::Pinned {
 	[[nodiscard]] auto get_page_count() const -> int { return m_page_count; }
 	[[nodiscard]] auto get_page_limit() const -> int { return m_page_limit; }
 
-	void refresh(EntryList list);
+	void refresh(std::shared_ptr<EntryList const> list);
 	void repaginate(int page_limit);
 
 	auto select_entry(Entry const& subentry) -> bool;
@@ -34,7 +34,7 @@ class FileList : public klib::Pinned {
 	template <typename PredT>
 	void apply_filter(PredT should_include) {
 		m_filtered.clear();
-		for (auto const& entry : m_list.entries) {
+		for (auto const& entry : m_list->entries) {
 			if (!should_include(entry)) { continue; }
 			m_filtered.emplace_back(&entry);
 		}
@@ -52,7 +52,7 @@ class FileList : public klib::Pinned {
 	void clear_pointers(std::size_t reserve = 0);
 	[[nodiscard]] auto find_entry(fs::path const& path) const -> EntryView;
 
-	EntryList m_list{};
+	std::shared_ptr<EntryList const> m_list{};
 	std::unordered_map<fs::path, EntryView> m_path_map{};
 	std::vector<klib::Ptr<Entry const>> m_filtered{};
 

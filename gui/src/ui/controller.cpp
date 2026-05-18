@@ -1,5 +1,6 @@
 #include "ui/controller.hpp"
 #include "app/log.hpp"
+#include "ui/entry_data.hpp"
 
 namespace xtag::gui::ui {
 namespace {
@@ -24,18 +25,12 @@ void Controller::initialize(Services const& services) {
 	m_instance = &services.get<Instance>();
 	m_delta_time = &services.get<DeltaTime>();
 
-	m_main_menu.initialize(services);
 	m_main_window.initialize(services);
 
 	m_state = State::Running;
 }
 
 void Controller::update() {
-	if (ImGui::BeginMainMenuBar()) {
-		m_main_menu.update();
-		ImGui::EndMainMenuBar();
-	}
-
 	auto const& viewport = *ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos({0.0f, viewport.WorkPos.y});
 	ImGui::SetNextWindowSize(viewport.WorkSize);
@@ -44,8 +39,6 @@ void Controller::update() {
 	m_main_window.update();
 	m_loading_modal.update(m_delta_time->get_dt());
 	poll_future();
-
-	if constexpr (klib::debug_v) { m_test_modal.update(m_delta_time->get_dt()); }
 
 	ImGui::End();
 }
@@ -89,10 +82,6 @@ void Controller::replace_tags(fs::path const& path, std::span<std::string_view c
 	refresh_root_directory();
 }
 
-void Controller::open_test_modal() {
-	if constexpr (klib::debug_v) { m_test_modal.set_should_open(); }
-}
-
 void Controller::poll_future() {
 	if (!is_ready(m_future)) { return; }
 
@@ -107,7 +96,12 @@ void Controller::poll_future() {
 		return;
 	}
 
-	m_main_window.set_list(std::move(*result));
+	m_entry_list = std::make_shared<EntryList>(std::move(*result));
+
+	m_entry_list->sort_entries();
+	for (auto& entry : m_entry_list->entries) { EntryData::write_to(entry, m_entry_list->path); }
+
+	m_main_window.set_list(m_entry_list);
 	m_loading_modal.set_should_close();
 }
 } // namespace xtag::gui::ui

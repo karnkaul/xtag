@@ -4,8 +4,8 @@
 #include <ranges>
 
 namespace xtag::gui {
-FileList::FileList(EntryList list, int const page_limit) {
-	if (list.entries.empty()) { throw Panic{"FileBrowser: EntryList is empty"}; }
+FileList::FileList(std::shared_ptr<EntryList const> list, int const page_limit) {
+	if (!list || list->entries.empty()) { throw Panic{"FileBrowser: EntryList is empty"}; }
 	refresh(std::move(list));
 	repaginate(page_limit);
 }
@@ -22,15 +22,17 @@ auto FileList::get_current_page() const -> Page {
 	return Page{.entries = span.subspan(0, size), .offset_from_start = int(offset)};
 }
 
-void FileList::refresh(EntryList list) {
+void FileList::refresh(std::shared_ptr<EntryList const> list) {
+	KLIB_ASSERT(list);
+
 	auto const was_selected = m_selected.entry ? m_selected.entry->path : fs::path{};
-	KLIB_ASSERT(!list.entries.empty());
-	clear_pointers(list.entries.size());
+	KLIB_ASSERT(!list->entries.empty());
+	clear_pointers(list->entries.size());
 	KLIB_ASSERT(m_filtered.empty() && m_path_map.empty() && !m_selected.entry);
 
-	m_list = std::move(list); // henceforth entries in m_list must remain address-stable.
+	m_list = std::move(list);
 
-	for (auto const& [index, entry] : std::views::enumerate(m_list.entries)) {
+	for (auto const& [index, entry] : std::views::enumerate(m_list->entries)) {
 		m_filtered.emplace_back(&entry);
 		m_path_map.insert_or_assign(entry.path, EntryView{.entry = &entry, .index = int(index)});
 	}
@@ -63,7 +65,7 @@ auto FileList::select_entry(Entry const& entry) -> bool {
 }
 
 auto FileList::set_page_number(int const page_number) -> bool {
-	if (page_number >= get_page_count()) { return false; }
+	if (page_number < 0 || page_number >= get_page_count()) { return false; }
 	m_page_number = page_number;
 	return true;
 }
@@ -74,6 +76,7 @@ void FileList::clear_filter() {
 
 void FileList::clear_pointers(std::size_t const reserve) {
 	m_selected = {};
+	m_list = {};
 	m_path_map.clear();
 	m_filtered.clear();
 	m_filtered.reserve(reserve);

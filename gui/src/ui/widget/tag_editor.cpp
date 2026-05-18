@@ -50,7 +50,7 @@ auto TagEditor::update() -> bool {
 
 	ImGui::EndPopup();
 
-	if (ret) { compute_replacement(); }
+	if (ret) { ret = compute_replacement(); }
 	return ret;
 }
 
@@ -106,7 +106,7 @@ void TagEditor::update_new_tag() {
 auto TagEditor::update_buttons() const -> bool {
 	auto ret = false;
 	ImGui::BeginDisabled(!m_dirty);
-	if (ImGui::Button("Commit")) {
+	if (ImGui::Button("Save Changes")) {
 		ret = true;
 		ImGui::CloseCurrentPopup();
 	}
@@ -116,9 +116,9 @@ auto TagEditor::update_buttons() const -> bool {
 	return ret;
 }
 
-void TagEditor::compute_replacement() {
+auto TagEditor::compute_replacement() -> bool {
 	m_replacement.clear();
-	if (m_list.outs.empty() && std::ranges::all_of(m_list.ins, [](In const& in) { return in.should_keep; })) { return; }
+	if (m_list.outs.empty() && std::ranges::all_of(m_list.ins, [](In const& in) { return in.should_keep; })) { return false; }
 
 	for (auto const& in : m_list.ins) {
 		if (!in.should_keep || in.tag.type != TagType::Primary) { continue; }
@@ -126,6 +126,7 @@ void TagEditor::compute_replacement() {
 	}
 	std::ranges::move(m_list.outs, std::back_inserter(m_replacement));
 	m_list.clear();
+	return true;
 }
 
 void TagEditor::List::clear(std::size_t const ins_reserve) {
