@@ -384,14 +384,27 @@ class Parser {
 	std::vector<Token> m_tokens{};
 	std::size_t m_cursor{};
 };
+
+struct CharICmp {
+	[[nodiscard]] static constexpr auto is_ascii(char const c) -> bool { return int(c) >= 32 && int(c) < 127; }
+
+	[[nodiscard]] static auto to_lower(char const c) -> char { return char(std::tolower(static_cast<unsigned char>(c))); }
+
+	auto operator()(char const a, char const b) const -> bool {
+		if (!is_ascii(a) || !is_ascii(b)) { return a == b; }
+		return to_lower(a) == to_lower(b);
+	}
+};
+
+[[nodiscard]] auto icontains(std::string_view const a, std::string_view const b) -> bool { return !std::ranges::search(a, b, CharICmp{}).empty(); }
 } // namespace
 
 auto Predicate::is_match(std::string_view const filename, std::span<ScanTag const> tags) const -> bool {
 	auto ret = false;
 	if ((scope & Scope::Tag) == Scope::Tag) {
-		ret = std::ranges::any_of(tags, [this](ScanTag const& tag) { return tag.value.contains(pattern); });
+		ret = std::ranges::any_of(tags, [this](ScanTag const& tag) { return icontains(tag.value, pattern); });
 	}
-	if (!ret && (scope & Scope::Filename) == Scope::Filename) { ret = filename.contains(pattern); }
+	if (!ret && (scope & Scope::Filename) == Scope::Filename) { ret = icontains(filename, pattern); }
 	if (invert) { ret = !ret; }
 	return ret;
 }
