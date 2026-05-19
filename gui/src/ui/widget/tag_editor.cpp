@@ -4,14 +4,21 @@
 #include <ranges>
 
 namespace xtag::gui::ui::widget {
-void TagEditor::set_should_open(Entry const& selected) {
-	m_replacement.clear();
+namespace {
+constexpr auto get_tag_color(TagType const type) -> ImVec4 {
+	switch (type) {
+	case TagType::Primary: return ImVec4{0.8f, 0.8f, 0.0f, 1.0f};
+	case TagType::Inherited: return ImVec4{0.0f, 0.8f, 1.0f, 1.0f};
+	default: return ImVec4{0.5f, 0.5f, 0.5f, 1.0f};
+	}
+}
+} // namespace
+
+void TagEditor::extract_tags(Entry const& selected) {
 	m_input.clear();
 	m_list.clear(selected.tags.size());
 	m_dirty = false;
 	for (auto const& tag : selected.tags) { m_list.ins.push_back(In{.tag = tag}); }
-
-	m_should_open = true;
 }
 
 void TagEditor::update_short_tags(std::span<ScanTag const> tags) {
@@ -26,30 +33,19 @@ void TagEditor::update_short_tags(std::span<ScanTag const> tags) {
 			ImGui::TextUnformatted("...");
 			break;
 		}
-		auto const color = widget::get_tag_color(tag.type);
+		auto const color = get_tag_color(tag.type);
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
 		ImGui::TextColored(color, "%s", tag.value.data());
 	}
 }
 
 auto TagEditor::update() -> bool {
-	if (m_should_open) {
-		m_should_open = false;
-		m_input.clear();
-		ImGui::OpenPopup(label_v.c_str());
-	}
-
-	if (!ImGui::BeginPopup(label_v.c_str())) { return false; }
-
 	update_header();
 	update_tags();
 	ImGui::Separator();
 	update_new_tag();
 	ImGui::Separator();
 	auto ret = update_buttons();
-
-	ImGui::EndPopup();
-
 	if (ret) { ret = compute_replacement(); }
 	return ret;
 }

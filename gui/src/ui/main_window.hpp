@@ -32,6 +32,7 @@ class MainWindow : public Object {
 	std::string m_root_directory{};
 	widget::FileBrowser m_file_browser{};
 	widget::TagEditor m_tag_editor{};
+	bool m_open_tag_editor{};
 
 	std::vector<std::string_view> m_tag_replacement{};
 	Action m_action{};

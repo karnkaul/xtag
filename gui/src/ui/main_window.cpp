@@ -5,6 +5,10 @@
 #include <imgui.h>
 
 namespace xtag::gui::ui {
+namespace {
+constexpr auto tag_editor_label_v = klib::CString{"tag_editor"};
+} // namespace
+
 void MainWindow::update() {
 	m_action = Action::None;
 
@@ -84,7 +88,10 @@ void MainWindow::update_table() {
 			ImGui::TextUnformatted(data.relative_path.c_str());
 			widget::TagEditor::update_short_tags(selected.tags);
 
-			if (ImGui::Button("edit tags")) { m_tag_editor.set_should_open(selected); }
+			if (ImGui::Button("edit tags")) {
+				m_tag_editor.extract_tags(selected);
+				m_open_tag_editor = true;
+			}
 		}
 
 		ImGui::EndTable();
@@ -104,7 +111,17 @@ void MainWindow::update_current_page() {
 }
 
 void MainWindow::update_tag_editor() {
-	if (!m_tag_editor.update()) { return; }
+	if (m_open_tag_editor) {
+		m_open_tag_editor = false;
+		ImGui::OpenPopup(tag_editor_label_v.c_str());
+	}
+
+	if (!ImGui::BeginPopup(tag_editor_label_v.c_str())) { return; }
+
+	auto const tags_changed = m_tag_editor.update();
+	ImGui::EndPopup();
+
+	if (!tags_changed) { return; }
 
 	set_tag_replacement();
 	m_action = Action::ReplaceTags;
