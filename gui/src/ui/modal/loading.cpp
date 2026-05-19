@@ -2,14 +2,16 @@
 #include <imgui.h>
 
 namespace xtag::gui::ui {
+void LoadingModal::initialize(Services const& services) { m_delta_time = &services.get<DeltaTime>(); }
+
 void LoadingModal::on_open() {
 	m_dot_count = 1;
 	m_dot_remain = dot_rate;
 	refresh_dots();
 }
 
-void LoadingModal::on_update(Seconds const dt) {
-	m_dot_remain -= dt;
+void LoadingModal::on_update() {
+	m_dot_remain -= m_delta_time->get_dt();
 	if (m_dot_remain <= 0s) {
 		m_dot_remain = dot_rate;
 		bump_dots();

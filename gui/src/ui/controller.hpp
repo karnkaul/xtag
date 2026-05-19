@@ -1,5 +1,4 @@
 #pragma once
-#include "service/delta_time.hpp"
 #include "ui/dispatch.hpp"
 #include "ui/main_window.hpp"
 #include "ui/modal/loading.hpp"
@@ -29,7 +28,6 @@ class Controller : public ui::IDispatch, public klib::Pinned {
 	void poll_future();
 
 	klib::Ptr<Instance> m_instance{};
-	klib::Ptr<DeltaTime const> m_delta_time{};
 
 	std::shared_ptr<EntryList> m_entry_list{};
 	ui::MainWindow m_main_window{*this};

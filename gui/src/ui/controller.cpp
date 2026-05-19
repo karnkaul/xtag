@@ -23,9 +23,9 @@ void Controller::initialize(Services const& services) {
 	Object::initialize(services);
 
 	m_instance = &services.get<Instance>();
-	m_delta_time = &services.get<DeltaTime>();
 
 	m_main_window.initialize(services);
+	m_loading_modal.initialize(services);
 
 	m_state = State::Running;
 }
@@ -37,7 +37,7 @@ void Controller::update() {
 	ImGui::Begin("main", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
 	m_main_window.update();
-	m_loading_modal.update(m_delta_time->get_dt());
+	m_loading_modal.update();
 	poll_future();
 
 	ImGui::End();
@@ -55,6 +55,11 @@ void Controller::shutdown() {
 }
 
 void Controller::refresh_root_directory() {
+	if (m_future.valid()) {
+		log.warn("async refresh already in progress, skipping request");
+		return;
+	}
+
 	if (m_root.empty()) {
 		log.warn("attempt to refresh empty root directory");
 		return;
@@ -72,7 +77,11 @@ void Controller::refresh_root_directory() {
 }
 
 void Controller::replace_tags(fs::path const& path, std::span<std::string_view const> tags) {
-	auto const result = m_instance->replace_tags(path, tags);
+	auto const result = [&] {
+		if (tags.empty()) { return m_instance->erase_tags(path); }
+		return m_instance->replace_tags(path, tags);
+	}();
+
 	if (!result) {
 		log.error("TODO: failed to replace tags on '{}': {}", path.generic_string(), result.error().message);
 		return;
