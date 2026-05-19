@@ -1,5 +1,7 @@
 #pragma once
+#include "ui/action.hpp"
 #include "ui/widget/im_input_text.hpp"
+#include "xtag/string_set.hpp"
 #include "xtag/types.hpp"
 #include <vector>
 
@@ -10,21 +12,18 @@ class TagEditor {
 
 	void extract_tags(Entry const& selected);
 
-	auto update() -> bool;
+	auto update() -> Action;
 
-	[[nodiscard]] auto get_replacement() const -> std::span<std::string const> { return m_replacement; }
+	[[nodiscard]] auto get_replacement() const -> std::span<std::string_view const> { return m_replacement; }
 
   private:
-	struct In {
-		ScanTag tag{};
+	struct Tag {
+		[[nodiscard]] auto is_input() const -> bool { return new_value.empty(); }
+		[[nodiscard]] auto is_primary() const -> bool { return in.type == TagType::Primary; }
+
+		ScanTag in{};
 		bool should_keep{true};
-	};
-
-	struct List {
-		void clear(std::size_t ins_reserve = 0);
-
-		std::vector<In> ins{};
-		std::vector<std::string> outs{};
+		std::string_view new_value{};
 	};
 
 	void update_header() const;
@@ -34,9 +33,11 @@ class TagEditor {
 
 	auto compute_replacement() -> bool;
 
-	List m_list{};
+	StringSet m_tag_set{};
+
+	std::vector<Tag> m_tags{};
 	ImInputText m_input{};
-	std::vector<std::string> m_replacement{};
+	std::vector<std::string_view> m_replacement{};
 
 	bool m_dirty{};
 };

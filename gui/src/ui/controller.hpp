@@ -1,12 +1,12 @@
 #pragma once
-#include "ui/dispatch.hpp"
 #include "ui/main_window.hpp"
 #include "ui/modal/loading.hpp"
+#include "ui/object.hpp"
 #include "xtag/instance.hpp"
 #include <future>
 
 namespace xtag::gui::ui {
-class Controller : public ui::IDispatch, public klib::Pinned {
+class Controller : public Object {
   public:
 	enum class State : std::int8_t { Running, Finished };
 
@@ -20,17 +20,17 @@ class Controller : public ui::IDispatch, public klib::Pinned {
 	void on_drop(fs::path const& root);
 	void on_window_close() { shutdown(); }
 
-	void shutdown() final;
-	void refresh_root_directory() final;
-	void replace_tags(fs::path const& path, std::span<std::string_view const> tags) final;
-
   private:
+	void shutdown();
+	void refresh_root_directory();
+	void replace_tags();
+
 	void poll_future();
 
 	klib::Ptr<Instance> m_instance{};
 
 	std::shared_ptr<EntryList> m_entry_list{};
-	ui::MainWindow m_main_window{*this};
+	ui::MainWindow m_main_window{};
 
 	fs::path m_root{};
 	std::future<Result<EntryList>> m_future{};

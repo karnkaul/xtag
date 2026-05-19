@@ -90,18 +90,6 @@ inline auto const entry_type_name_map = klib::EnumNameMap<EntryType>{
 	{EntryType::File, "File"},
 };
 
-struct EntryOld {
-	using Type = EntryType;
-
-	void sort_recursive();
-
-	Type type{};
-	fs::path path{};
-	std::vector<ScanTag> tags{};
-	std::vector<EntryOld> subentries{};
-	std::any custom_payload{};
-};
-
 struct Entry {
 	using Type = EntryType;
 

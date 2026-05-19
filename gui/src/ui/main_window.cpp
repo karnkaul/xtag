@@ -17,15 +17,6 @@ void MainWindow::update() {
 	update_controls();
 	update_current_page();
 	update_tag_editor();
-
-	switch (m_action) {
-	case Action::None: return;
-	case Action::RefreshRoot: m_dispatch->refresh_root_directory(); break;
-	case Action::ReplaceTags: {
-		if (m_file_browser.file_list) { m_dispatch->replace_tags(m_file_browser.file_list->get_selected().path, m_tag_replacement); }
-		break;
-	}
-	}
 }
 
 void MainWindow::set_list(std::shared_ptr<EntryList const> list) {
@@ -52,6 +43,13 @@ void MainWindow::set_filter(std::string_view const query) {
 		m_file_browser.file_list->apply_filter(should_include);
 	}
 }
+
+auto MainWindow::get_selected() const -> klib::Ptr<Entry const> {
+	if (!m_file_browser.file_list) { return {}; }
+	return &m_file_browser.file_list->get_selected();
+}
+
+auto MainWindow::get_replacement_tags() const -> std::span<std::string_view const> { return m_tag_editor.get_replacement(); }
 
 void MainWindow::update_header() {
 	if (m_root_directory.empty()) {
@@ -118,21 +116,11 @@ void MainWindow::update_tag_editor() {
 
 	if (!ImGui::BeginPopup(tag_editor_label_v.c_str())) { return; }
 
-	auto const tags_changed = m_tag_editor.update();
+	auto const editor_action = m_tag_editor.update();
 	ImGui::EndPopup();
 
-	if (!tags_changed) { return; }
+	if (editor_action != Action::ReplaceTags) { return; }
 
-	set_tag_replacement();
-	m_action = Action::ReplaceTags;
-}
-
-void MainWindow::set_tag_replacement() {
-	m_tag_replacement.clear();
-	auto const replacement = m_tag_editor.get_replacement();
-	if (replacement.empty()) { return; }
-
-	m_tag_replacement.reserve(replacement.size());
-	for (auto const& tag : replacement) { m_tag_replacement.push_back(tag); }
+	m_action = editor_action;
 }
 } // namespace xtag::gui::ui

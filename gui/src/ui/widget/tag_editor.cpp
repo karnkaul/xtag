@@ -16,9 +16,10 @@ constexpr auto get_tag_color(TagType const type) -> ImVec4 {
 
 void TagEditor::extract_tags(Entry const& selected) {
 	m_input.clear();
-	m_list.clear(selected.tags.size());
+	m_tags.clear();
+	m_tags.reserve(selected.tags.size());
+	for (auto const& tag : selected.tags) { m_tags.push_back(Tag{.in = tag}); }
 	m_dirty = false;
-	for (auto const& tag : selected.tags) { m_list.ins.push_back(In{.tag = tag}); }
 }
 
 void TagEditor::update_short_tags(std::span<ScanTag const> tags) {
@@ -39,7 +40,7 @@ void TagEditor::update_short_tags(std::span<ScanTag const> tags) {
 	}
 }
 
-auto TagEditor::update() -> bool {
+auto TagEditor::update() -> Action {
 	update_header();
 	update_tags();
 	ImGui::Separator();
@@ -47,7 +48,7 @@ auto TagEditor::update() -> bool {
 	ImGui::Separator();
 	auto ret = update_buttons();
 	if (ret) { ret = compute_replacement(); }
-	return ret;
+	return ret ? Action::ReplaceTags : Action::None;
 }
 
 void TagEditor::update_header() const {
@@ -61,24 +62,22 @@ void TagEditor::update_header() const {
 void TagEditor::update_tags() {
 	if (!ImGui::BeginListBox("tags", {200.0f, 0.0f})) { return; }
 
-	for (auto [index, tag] : std::views::enumerate(m_list.ins)) {
-		ImGui::BeginDisabled(tag.tag.type != TagType::Primary);
-		m_dirty |= ImGui::Checkbox(klib::FixedString{"##keep_in{}", index}.c_str(), &tag.should_keep);
+	for (auto [index, tag] : std::views::enumerate(m_tags)) {
+		ImGui::BeginDisabled(tag.is_input() && !tag.is_primary());
+		m_dirty |= ImGui::Checkbox(klib::FixedString{"##keep{}", index}.c_str(), &tag.should_keep);
 		ImGui::EndDisabled();
-		ImGui::SameLine();
-		ImGui::PushStyleColor(ImGuiCol_Text, get_tag_color(tag.tag.type));
-		ImGui::TextUnformatted(tag.tag.value.data());
-		ImGui::PopStyleColor();
-	}
 
-	for (auto [index, tag] : std::views::enumerate(m_list.outs)) {
-		auto keep = true;
-		ImGui::Checkbox(klib::FixedString{"##keep_out{}", index}.c_str(), &keep);
 		ImGui::SameLine();
-		ImGui::TextUnformatted(tag.c_str());
-		if (!keep) {
-			m_list.outs.erase(m_list.outs.begin() + std::ptrdiff_t(index));
-			break;
+		if (tag.is_input()) {
+			ImGui::PushStyleColor(ImGuiCol_Text, get_tag_color(tag.in.type));
+			ImGui::TextUnformatted(tag.in.value.data());
+			ImGui::PopStyleColor();
+		} else {
+			ImGui::TextUnformatted(tag.new_value.data());
+			if (!tag.should_keep) {
+				m_tags.erase(m_tags.begin() + std::ptrdiff_t(index));
+				break;
+			}
 		}
 	}
 
@@ -92,7 +91,7 @@ void TagEditor::update_new_tag() {
 	auto const new_tag = m_input.as_view();
 	ImGui::BeginDisabled(new_tag.empty());
 	if (ImGui::Button("Add")) {
-		m_list.outs.emplace_back(new_tag);
+		m_tags.push_back(Tag{.new_value = repoint_through(m_tag_set, new_tag)});
 		m_input.clear();
 		m_dirty = true;
 	}
@@ -114,20 +113,17 @@ auto TagEditor::update_buttons() const -> bool {
 
 auto TagEditor::compute_replacement() -> bool {
 	m_replacement.clear();
-	if (m_list.outs.empty() && std::ranges::all_of(m_list.ins, [](In const& in) { return in.should_keep; })) { return false; }
+	if (std::ranges::all_of(m_tags, [](Tag const& tag) { return tag.is_input() && tag.should_keep; })) { return false; }
 
-	for (auto const& in : m_list.ins) {
-		if (!in.should_keep || in.tag.type != TagType::Primary) { continue; }
-		m_replacement.emplace_back(in.tag.value);
+	for (auto& tag : m_tags) {
+		if (!tag.is_input()) {
+			m_replacement.push_back(tag.new_value);
+			continue;
+		}
+		if (!tag.should_keep || !tag.is_primary()) { continue; }
+		m_replacement.push_back(tag.in.value);
 	}
-	std::ranges::move(m_list.outs, std::back_inserter(m_replacement));
-	m_list.clear();
-	return true;
-}
 
-void TagEditor::List::clear(std::size_t const ins_reserve) {
-	ins.clear();
-	outs.clear();
-	ins.reserve(ins_reserve);
+	return true;
 }
 } // namespace xtag::gui::ui::widget

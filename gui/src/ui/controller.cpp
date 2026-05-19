@@ -41,6 +41,14 @@ void Controller::update() {
 	poll_future();
 
 	ImGui::End();
+
+	if (m_future.valid()) { return; }
+
+	switch (m_main_window.get_action()) {
+	case Action::None: return;
+	case Action::RefreshRoot: refresh_root_directory(); break;
+	case Action::ReplaceTags: replace_tags(); break;
+	}
 }
 
 void Controller::on_drop(fs::path const& root) {
@@ -55,10 +63,7 @@ void Controller::shutdown() {
 }
 
 void Controller::refresh_root_directory() {
-	if (m_future.valid()) {
-		log.warn("async refresh already in progress, skipping request");
-		return;
-	}
+	KLIB_ASSERT(!m_future.valid());
 
 	if (m_root.empty()) {
 		log.warn("attempt to refresh empty root directory");
@@ -76,18 +81,24 @@ void Controller::refresh_root_directory() {
 	m_loading_modal.set_should_open();
 }
 
-void Controller::replace_tags(fs::path const& path, std::span<std::string_view const> tags) {
+void Controller::replace_tags() {
+	KLIB_ASSERT(!m_future.valid());
+
+	auto const selected = m_main_window.get_selected();
+	if (!selected || selected->path.empty()) { return; }
+
+	auto const replacement_tags = m_main_window.get_replacement_tags();
 	auto const result = [&] {
-		if (tags.empty()) { return m_instance->erase_tags(path); }
-		return m_instance->replace_tags(path, tags);
+		if (replacement_tags.empty()) { return m_instance->erase_tags(selected->path); }
+		return m_instance->replace_tags(selected->path, replacement_tags);
 	}();
 
 	if (!result) {
-		log.error("TODO: failed to replace tags on '{}': {}", path.generic_string(), result.error().message);
+		log.error("TODO: failed to replace tags on '{}': {}", selected->path.generic_string(), result.error().message);
 		return;
 	}
 
-	log.info("tags replaced successfully: '{}', refreshing root directory...", path.generic_string());
+	log.info("tags replaced successfully: '{}', refreshing root directory", selected->path.generic_string());
 	refresh_root_directory();
 }
 
