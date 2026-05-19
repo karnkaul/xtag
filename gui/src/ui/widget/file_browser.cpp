@@ -79,6 +79,11 @@ auto FileBrowser::update_filter(std::string_view& out_query) -> bool {
 	m_query_input.update("query");
 	out_query = m_query_input.as_view();
 	ImGui::SameLine();
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+	ImGui::TextColored({0.5f, 0.5f, 0.5f, 1.0f}, "[?]");
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+	ImGui::SetItemTooltip("Conjunction of space separated predicates.\npredicate syntax: [-][filename=|tag=]<pattern>");
+	ImGui::SameLine();
 	ImGui::BeginDisabled(!file_list);
 	auto ret = ImGui::Button("search");
 	ImGui::EndDisabled();
