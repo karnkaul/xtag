@@ -1,4 +1,5 @@
 #pragma once
+#include "klib/ptr.hpp"
 #include "ui/action.hpp"
 #include "ui/widget/im_input_text.hpp"
 #include "xtag/string_set.hpp"
@@ -9,6 +10,8 @@ namespace xtag::gui::ui::widget {
 class TagEditor {
   public:
 	static void update_short_tags(std::span<ScanTag const> tags);
+
+	explicit TagEditor(StringSet& tag_storage) : m_tag_storage(&tag_storage) {}
 
 	void extract_tags(Entry const& selected);
 
@@ -33,7 +36,7 @@ class TagEditor {
 
 	auto compute_replacement() -> bool;
 
-	StringSet m_tag_set{};
+	klib::Ptr<StringSet> m_tag_storage{};
 
 	std::vector<Tag> m_tags{};
 	ImInputText m_input{};

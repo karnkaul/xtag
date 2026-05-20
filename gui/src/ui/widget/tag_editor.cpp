@@ -91,7 +91,7 @@ void TagEditor::update_new_tag() {
 	auto const new_tag = m_input.as_view();
 	ImGui::BeginDisabled(new_tag.empty());
 	if (ImGui::Button("Add")) {
-		m_tags.push_back(Tag{.new_value = repoint_through(m_tag_set, new_tag)});
+		m_tags.push_back(Tag{.new_value = repoint_through(*m_tag_storage, new_tag)});
 		m_input.clear();
 		m_dirty = true;
 	}

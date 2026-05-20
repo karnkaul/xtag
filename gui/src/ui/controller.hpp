@@ -10,9 +10,10 @@ class Controller : public Object {
   public:
 	enum class State : std::int8_t { Running, Finished };
 
+	explicit Controller(Instance& instance, StringSet& tag_storage, DeltaTime const& delta_time);
+
 	static void set_styles(ImGuiStyle& style);
 
-	void initialize(Services const& services) final;
 	void update() final;
 
 	[[nodiscard]] auto get_state() const -> State { return m_state; }
@@ -30,11 +31,11 @@ class Controller : public Object {
 	klib::Ptr<Instance> m_instance{};
 
 	std::shared_ptr<EntryList> m_entry_list{};
-	ui::MainWindow m_main_window{};
+	MainWindow m_main_window;
 
 	fs::path m_root{};
 	std::future<Result<EntryList>> m_future{};
-	LoadingModal m_loading_modal{};
+	LoadingModal m_loading_modal;
 	State m_state{State::Running};
 };
 } // namespace xtag::gui::ui

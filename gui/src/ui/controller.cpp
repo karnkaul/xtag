@@ -17,18 +17,10 @@ template <typename T>
 }
 } // namespace
 
+Controller::Controller(Instance& instance, StringSet& tag_storage, DeltaTime const& delta_time)
+	: m_instance(&instance), m_main_window(tag_storage), m_loading_modal(delta_time) {}
+
 void Controller::set_styles(ImGuiStyle& style) { style.CellPadding = {6.0f, 6.0f}; }
-
-void Controller::initialize(Services const& services) {
-	Object::initialize(services);
-
-	m_instance = &services.get<Instance>();
-
-	m_main_window.initialize(services);
-	m_loading_modal.initialize(services);
-
-	m_state = State::Running;
-}
 
 void Controller::update() {
 	auto const& viewport = *ImGui::GetMainViewport();

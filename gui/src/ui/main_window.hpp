@@ -4,10 +4,13 @@
 #include "ui/widget/file_browser.hpp"
 #include "ui/widget/scan_data.hpp"
 #include "ui/widget/tag_editor.hpp"
+#include "xtag/string_set.hpp"
 
 namespace xtag::gui::ui {
 class MainWindow : public Object {
   public:
+	explicit MainWindow(StringSet& tag_storage);
+
 	void update() final;
 	[[nodiscard]] auto get_action() const -> Action { return m_action; }
 
@@ -28,7 +31,7 @@ class MainWindow : public Object {
 
 	std::string m_root_directory{};
 	widget::FileBrowser m_file_browser{};
-	widget::TagEditor m_tag_editor{};
+	widget::TagEditor m_tag_editor;
 	bool m_open_tag_editor{};
 
 	Action m_action{};

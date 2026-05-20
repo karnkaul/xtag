@@ -9,6 +9,8 @@ namespace {
 constexpr auto tag_editor_label_v = klib::CString{"tag_editor"};
 } // namespace
 
+MainWindow::MainWindow(StringSet& tag_storage) : m_tag_editor(tag_storage) {}
+
 void MainWindow::update() {
 	m_action = Action::None;
 
