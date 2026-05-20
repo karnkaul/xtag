@@ -1,19 +1,15 @@
 #include "ui/widget/file_browser.hpp"
 #include "klib/string/fixed_string.hpp"
+#include "ui/entry_data.hpp"
+#include <ranges>
 
 namespace xtag::gui::ui::widget {
-void FileBrowser::update_pagination() {
-	auto const filtered_count = int(list.get_filtered().size());
-	auto const page_number = list.get_page_number();
+namespace {
+auto update_page_number(int const page_number, int const page_count) -> int {
+	auto ret = page_number;
 
-	auto const page = list.get_current_page();
-	auto const page_count = list.get_page_count();
-	auto const entry_count = int(page.entries.size());
-	auto const start_number = page.offset_from_start + 1;
-	auto const end_number = start_number + entry_count - 1;
-
-	ImGui::BeginDisabled(page_number == 0);
-	if (ImGui::Button("<<")) { list.set_page_number(page_number - 1); }
+	ImGui::BeginDisabled(page_number <= 0);
+	if (ImGui::Button("<<")) { ret = page_number - 1; }
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 
@@ -21,44 +17,99 @@ void FileBrowser::update_pagination() {
 	ImGui::SetNextItemWidth(50.0f);
 	if (ImGui::BeginCombo("##page", klib::FixedString{"{}", page_number}.c_str())) {
 		for (int number = 0; number < page_count; ++number) {
-			if (ImGui::Selectable(klib::FixedString{"{}", number}.c_str(), number == page_number)) { list.set_page_number(number); }
+			if (ImGui::Selectable(klib::FixedString{"{}", number}.c_str(), number == page_number)) { ret = number; }
 		}
 		ImGui::EndCombo();
 	}
 	ImGui::EndDisabled();
 
 	ImGui::SameLine();
-	ImGui::BeginDisabled(page_number + 1 == page_count);
-	if (ImGui::Button(">>")) { list.set_page_number(page_number + 1); }
+	ImGui::BeginDisabled(page_number + 1 >= page_count);
+	if (ImGui::Button(">>")) { ret = page_number + 1; }
 	ImGui::EndDisabled();
 
+	return ret;
+}
+
+auto update_page_size(int const page_limit) -> int {
+	ImGui::SetNextItemWidth(80.0f);
+	auto ret = page_limit;
+	if (ImGui::BeginCombo("items per page", klib::FixedString<>{"{}", page_limit}.c_str())) {
+		auto const update_limit = [&](int const limit) {
+			if (ImGui::Selectable(klib::FixedString{"{}", limit}.c_str(), page_limit == limit)) { ret = limit; }
+		};
+		for (auto const limit : FileBrowser::page_limits_v) { update_limit(limit); }
+		ImGui::EndCombo();
+	}
+	return ret;
+}
+} // namespace
+
+void FileBrowser::update_pagination() {
+	if (!file_list) {
+		update_page_number(0, 0);
+		ImGui::SameLine();
+		ImGui::TextUnformatted("0-0 / 0");
+		ImGui::SameLine();
+		ImGui::BeginDisabled();
+		update_page_size(default_page_limit_v);
+		ImGui::EndDisabled();
+		return;
+	}
+
+	auto const page_number = file_list->get_page_number();
+	auto const new_page_number = update_page_number(page_number, file_list->get_page_count());
+	if (new_page_number != page_number) { file_list->set_page_number(new_page_number); }
+
+	auto const page = file_list->get_current_page();
+	auto const start_number = page.offset_from_start + 1;
+	auto const end_number = start_number + int(page.entries.size()) - 1;
+	auto const filtered_count = int(file_list->get_filtered().size());
 	ImGui::SameLine();
 	ImGui::TextUnformatted(klib::FixedString{"{}-{} / {}", start_number, end_number, filtered_count}.c_str());
 
 	ImGui::SameLine();
-	ImGui::SetNextItemWidth(80.0f);
-	if (ImGui::BeginCombo("items per page", klib::FixedString<>{"{}", list.get_page_limit()}.c_str())) {
-		auto const page_limit = [this](int const limit) {
-			if (ImGui::Selectable(klib::FixedString{"{}", limit}.c_str(), list.get_page_limit() == limit)) { list.repaginate(limit); }
-		};
-		for (auto const limit : page_limits_v) { page_limit(limit); }
-		ImGui::EndCombo();
-	}
+	auto const page_limit = file_list->get_page_limit();
+	auto const new_page_limit = update_page_size(page_limit);
+	if (new_page_limit != page_limit) { file_list->repaginate(new_page_limit); }
 }
 
-void FileBrowser::update_filter() {
-	filter.update();
-	if (ImGui::Button("apply")) { list.apply_filter(filter.allow.as_view(), filter.block.as_view()); }
-}
-
-void FileBrowser::update_number_width(FileList::Page const& current_page) {
-	m_number_width = 1;
-	for (auto count = current_page.offset_from_start + int(current_page.entries.size()); count >= 10; count /= 10) { ++m_number_width; }
-}
-
-void FileBrowser::update_entry(int const number, Entry const& entry, klib::CString const path) {
-	ImGui::TextUnformatted(klib::FixedString{"{: >{}}.", number, m_number_width}.c_str());
+auto FileBrowser::update_filter(std::string_view& out_query) -> bool {
+	ImGui::SetNextItemWidth(150.0f);
+	m_query_input.update("query");
+	out_query = m_query_input.as_view();
 	ImGui::SameLine();
-	if (ImGui::Selectable(path.c_str(), &entry == &list.get_selected())) { list.select_entry(entry); }
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+	ImGui::TextColored({0.5f, 0.5f, 0.5f, 1.0f}, "[?]");
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+	ImGui::SetItemTooltip("Conjunction of space separated predicates.\npredicate syntax: [-][filename=|tag=]<pattern>");
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!file_list);
+	auto ret = ImGui::Button("search");
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("clear")) {
+		m_query_input.clear();
+		out_query = {};
+		ret = true;
+	}
+	return ret;
+}
+
+void FileBrowser::update_current_page() {
+	if (!file_list) { return; }
+
+	auto const page = file_list->get_current_page();
+
+	auto number_width = 1;
+	for (auto count = page.offset_from_start + int(page.entries.size()); count >= 10; count /= 10) { ++number_width; }
+
+	for (auto const& [index, entry] : std::views::enumerate(page.entries)) {
+		auto const& data = EntryData::read_from(*entry);
+		auto const number = int(index) + page.offset_from_start + 1;
+		ImGui::TextUnformatted(klib::FixedString{"{: >{}}.", number, number_width}.c_str());
+		ImGui::SameLine();
+		if (ImGui::Selectable(data.relative_path.c_str(), entry == &file_list->get_selected())) { file_list->select_entry(*entry); }
+	}
 }
 } // namespace xtag::gui::ui::widget

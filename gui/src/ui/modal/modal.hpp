@@ -1,5 +1,4 @@
 #pragma once
-#include "app/time.hpp"
 #include "klib/base_types.hpp"
 #include "klib/string/c_string.hpp"
 
@@ -12,13 +11,13 @@ class Modal : public klib::Polymorphic {
 	void set_should_open(bool should_open = true);
 	void set_should_close(bool should_close = true);
 
-	void update(Seconds dt);
+	void update();
 
 	klib::CString label{};
 
   protected:
 	virtual void on_open() {}
-	virtual void on_update(Seconds dt);
+	virtual void on_update();
 
 	bool m_should_open{};
 	bool m_should_close{};

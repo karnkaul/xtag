@@ -1,8 +1,10 @@
+#include "detail/query_scanner.hpp"
 #include "detail/util.hpp"
 #include "klib/cli/text_table.hpp"
 #include "klib/debug/assert.hpp"
 #include "xtag/formatter.hpp"
 #include "xtag/instance.hpp"
+#include "xtag/query.hpp"
 #include "xtag/xattr.hpp"
 #include <cerrno>
 #include <filesystem>
@@ -52,13 +54,6 @@ class ScopedErrno {
 	}
 }
 
-[[nodiscard]] auto repoint_through(StringSet& out, std::string_view const tag) -> std::string_view {
-	auto it = out.find(tag);
-	if (it == out.end()) { it = out.insert(std::string{tag}).first; }
-	KLIB_ASSERT(it != out.end());
-	return *it;
-}
-
 [[nodiscard]] auto validate(klib::CString const path, klib::CString const name) -> Result<void> {
 	if (path.as_view().empty()) { return to_error(Error::Type::InvalidArgument, "passed path is empty"); }
 	if (name.as_view().empty()) { return to_error(Error::Type::InvalidArgument, "passed name is empty"); }
@@ -76,58 +71,6 @@ class ScopedErrno {
 	if (fs::is_regular_file(path)) { return EntryType::File; }
 	return EntryType::None;
 }
-
-class ScannerOld {
-  public:
-	explicit ScannerOld(Instance& self, ScanInfo const& info) : m_self(self), m_info(info) {}
-
-	[[nodiscard]] auto operator()(fs::path const& root) -> Result<EntryOld> {
-		if (!fs::is_directory(root)) { return to_error(Error::Type::InvalidArgument, std::format("not a directory: '{}'", root.generic_string())); }
-		return scan_directory(root, {}, 0);
-	}
-
-  private:
-	[[nodiscard]] auto scan_directory(fs::path const& path, std::span<ScanTag const> parent_tags, int const depth) -> EntryOld {
-		auto ret = EntryOld{.type = EntryType::Directory};
-		ret.path = fs::canonical(path);
-		ret.tags = get_combined_tags(path, parent_tags);
-
-		for (auto const& it : fs::directory_iterator{path}) {
-			if (it.is_directory()) {
-				scan_subdirectory(ret, it.path(), depth + 1);
-			} else if (it.is_regular_file()) {
-				scan_file(ret, it.path());
-			}
-		}
-
-		return ret;
-	}
-
-	[[nodiscard]] auto get_combined_tags(fs::path const& path, std::span<ScanTag const> parent_tags) const -> std::vector<ScanTag> {
-		auto ret = std::vector<ScanTag>{};
-		if (auto result = m_self.get_tags(path)) { ret = std::move(result->tags); }
-		for (auto const& scan_tag : parent_tags) { ret.push_back(ScanTag{.value = scan_tag.value, .type = TagType::Inherited}); }
-		return ret;
-	}
-
-	void scan_subdirectory(EntryOld& parent, fs::path const& path, int const depth) {
-		if (depth > m_info.depth) { return; }
-		auto subdir = scan_directory(path, parent.tags, depth);
-		if (!should_include(subdir.tags, m_info.filter)) { return; }
-		parent.subentries.push_back(std::move(subdir));
-	}
-
-	void scan_file(EntryOld& parent, fs::path const& path) {
-		if (!m_info.filter.include_files) { return; }
-		auto file = EntryOld{.type = EntryType::File, .path = fs::canonical(path)};
-		file.tags = get_combined_tags(file.path, parent.tags);
-		if (!should_include(file.tags, m_info.filter)) { return; }
-		parent.subentries.push_back(std::move(file));
-	}
-
-	Instance& m_self;
-	ScanInfo const& m_info;
-};
 
 class Scanner {
   public:
@@ -243,15 +186,6 @@ void detail::deserialize_tags(StringSet& out_set, std::string_view const seriali
 	}
 }
 
-void EntryOld::sort_recursive() {
-	auto const pred = [](EntryOld const& a, EntryOld const& b) {
-		if (a.type != b.type) { return a.type == EntryType::Directory; }
-		return a.path < b.path;
-	};
-	std::ranges::sort(subentries, pred);
-	for (auto& subentry : subentries) { subentry.sort_recursive(); }
-}
-
 void EntryList::sort_entries() {
 	auto const pred = [](Entry const& a, Entry const& b) {
 		if (a.type != b.type) { return a.type == EntryType::Directory; }
@@ -260,10 +194,10 @@ void EntryList::sort_entries() {
 	std::ranges::sort(entries, pred);
 }
 
-auto Instance::get_tags(fs::path const& path) -> Result<EntryOld> {
+auto Instance::get_tags(fs::path const& path) -> Result<Entry> {
 	auto& serialized = wipe_buffer();
 	return get_serialized_to(serialized, path).transform([&] {
-		auto ret = EntryOld{.path = fs::canonical(path)};
+		auto ret = Entry{.path = fs::canonical(path)};
 		ret.type = to_entry_type(ret.path);
 		auto const per_tag = [&](std::string_view const tag) { ret.tags.push_back(ScanTag{.value = tag, .type = TagType::Primary}); };
 		detail::deserialize_tags(m_tag_storage, serialized, per_tag);
@@ -290,8 +224,6 @@ auto Instance::erase_tags(fs::path const& path) const -> Result<void> {
 	auto const str = path.generic_string();
 	return xattr::remove(str.c_str(), get_attribute_name());
 }
-
-auto Instance::scan_directory_old(fs::path const& directory, ScanInfo const& info) -> Result<EntryOld> { return ScannerOld{*this, info}(directory); }
 
 auto Instance::scan_directory(fs::path const& directory, ScanInfo const& info) -> Result<EntryList> { return Scanner{*this, info}(directory); }
 
@@ -383,7 +315,115 @@ auto Formatter::format_table(EntryList const& list) const -> std::string {
 	}
 	return table.serialize();
 }
+
+namespace query {
+namespace {
+class Parser {
+  public:
+	explicit Parser(std::string_view const text) {
+		auto scanner = Scanner{text};
+		auto token = Token{};
+		while (scanner.next(token)) { m_tokens.push_back(token); }
+	}
+
+	[[nodiscard]] auto operator()() -> Expression {
+		auto ret = Expression{};
+		while (!at_end()) { ret.predicates.push_back(parse_predicate()); }
+		return ret;
+	}
+
+  private:
+	[[nodiscard]] auto at_end() const -> bool { return m_cursor >= m_tokens.size(); }
+
+	[[nodiscard]] auto peek_next(std::size_t const offset = 1) const -> Token {
+		if (m_cursor + offset >= m_tokens.size()) { return {}; }
+		return m_tokens.at(m_cursor + offset);
+	}
+
+	[[nodiscard]] auto get_current() const -> Token { return peek_next(0); }
+
+	auto advance() -> Token {
+		auto ret = get_current();
+		++m_cursor;
+		return ret;
+	}
+
+	[[nodiscard]] auto parse_predicate() -> Predicate {
+		auto ret = Predicate{};
+		auto token = advance();
+		ret.pattern = token.lexeme;
+
+		token = get_current();
+		if (token.type == TokenType::Equals) {
+			advance(); // =
+			token = get_current();
+			parse_scope_to(ret, ret.pattern);
+			ret.pattern = token.lexeme;
+			advance(); // pattern
+		} else if (ret.pattern.starts_with("-")) {
+			ret.invert = true;
+			ret.pattern.remove_prefix(1);
+		}
+
+		return ret;
+	}
+
+	static void parse_scope_to(Predicate& out, std::string_view input) {
+		if (input.starts_with("-")) {
+			out.invert = true;
+			input.remove_prefix(1);
+		}
+
+		if (input == "f" || input == "filename") {
+			out.scope = Scope::Filename;
+		} else if (input == "t" || input == "tag") {
+			out.scope = Scope::Tag;
+		}
+	}
+
+	std::vector<Token> m_tokens{};
+	std::size_t m_cursor{};
+};
+
+struct CharICmp {
+	[[nodiscard]] static constexpr auto is_ascii(char const c) -> bool { return int(c) >= 32 && int(c) < 127; }
+
+	[[nodiscard]] static auto to_lower(char const c) -> char { return char(std::tolower(static_cast<unsigned char>(c))); }
+
+	auto operator()(char const a, char const b) const -> bool {
+		if (!is_ascii(a) || !is_ascii(b)) { return a == b; }
+		return to_lower(a) == to_lower(b);
+	}
+};
+
+[[nodiscard]] auto icontains(std::string_view const a, std::string_view const b) -> bool { return !std::ranges::search(a, b, CharICmp{}).empty(); }
+} // namespace
+
+auto Predicate::is_match(std::string_view const filename, std::span<ScanTag const> tags) const -> bool {
+	auto ret = false;
+	if ((scope & Scope::Tag) == Scope::Tag) {
+		ret = std::ranges::any_of(tags, [this](ScanTag const& tag) { return icontains(tag.value, pattern); });
+	}
+	if (!ret && (scope & Scope::Filename) == Scope::Filename) { ret = icontains(filename, pattern); }
+	if (invert) { ret = !ret; }
+	return ret;
+}
+
+auto Expression::is_match(std::string_view const filename, std::span<ScanTag const> tags) const -> bool {
+	if (predicates.empty()) { return true; }
+	return std::ranges::all_of(predicates, [&](Predicate const& p) { return p.is_match(filename, tags); });
+}
+} // namespace query
+
+auto query::parse(std::string_view const text) -> Expression { return Parser{text}(); }
 } // namespace xtag
+
+auto xtag::repoint_through(StringSet& out, std::string_view const key) -> std::string_view {
+	auto it = out.find(key);
+	if (it == out.end()) { it = out.insert(std::string{key}).first; }
+	KLIB_ASSERT(it != out.end());
+	return *it;
+}
 
 auto xtag::format_error(Error::Type const type, std::string_view const message) -> std::string {
 	return std::format("[{}] {}", Error::type_name_map.to_name(type), message);

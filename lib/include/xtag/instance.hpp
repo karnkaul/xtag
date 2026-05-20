@@ -23,14 +23,13 @@ class Instance {
 
 	explicit Instance(std::string custom_attribute_name = {}) : custom_attribute_name(std::move(custom_attribute_name)) {}
 
-	[[nodiscard]] auto get_tags(fs::path const& path) -> Result<EntryOld>;
+	[[nodiscard]] auto get_tags(fs::path const& path) -> Result<Entry>;
 
 	auto replace_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void>;
 	auto append_tags(fs::path const& path, std::span<std::string_view const> tags) -> Result<void>;
 
 	auto erase_tags(fs::path const& path) const -> Result<void>;
 
-	[[nodiscard]] auto scan_directory_old(fs::path const& directory, ScanInfo const& info = {}) -> Result<EntryOld>;
 	[[nodiscard]] auto scan_directory(fs::path const& directory, ScanInfo const& info = {}) -> Result<EntryList>;
 
 	[[nodiscard]] auto get_attribute_name() const -> klib::CString;

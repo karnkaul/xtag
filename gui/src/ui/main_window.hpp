@@ -1,31 +1,37 @@
 #pragma once
-#include "ui/dispatch.hpp"
+#include "ui/action.hpp"
 #include "ui/widget/file_browser.hpp"
 #include "ui/widget/scan_data.hpp"
 #include "ui/widget/tag_editor.hpp"
-#include <optional>
+#include "xtag/string_set.hpp"
 
 namespace xtag::gui::ui {
-class MainWindow : public Object {
+class MainWindow {
   public:
-	explicit MainWindow(IDispatch& dispatch) : m_dispatch(&dispatch) {}
+	explicit MainWindow(StringSet& tag_storage);
 
-	void update() final;
+	auto update() -> Action;
 
-	void set_list(EntryList list);
+	void set_list(std::shared_ptr<EntryList const> list);
+	void set_filter(std::string_view query);
+
+	[[nodiscard]] auto get_selected() const -> klib::Ptr<Entry const>;
+	[[nodiscard]] auto get_replacement_tags() const -> std::span<std::string_view const>;
 
 	widget::ScanData scan_data{};
 
   private:
+	void update_header();
+	void update_table();
+	void update_controls();
 	void update_current_page();
-
-	auto should_replace_tags() -> bool;
-
-	klib::Ptr<IDispatch> m_dispatch{};
+	void update_tag_editor();
 
 	std::string m_root_directory{};
-	std::optional<widget::FileBrowser> m_file_browser{};
-	widget::TagEditor m_tag_editor{};
-	std::vector<std::string_view> m_tag_replacement{};
+	widget::FileBrowser m_file_browser{};
+	widget::TagEditor m_tag_editor;
+	bool m_open_tag_editor{};
+
+	Action m_action{};
 };
 } // namespace xtag::gui::ui

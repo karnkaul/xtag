@@ -8,8 +8,8 @@ void LoadingModal::on_open() {
 	refresh_dots();
 }
 
-void LoadingModal::on_update(Seconds const dt) {
-	m_dot_remain -= dt;
+void LoadingModal::on_update() {
+	m_dot_remain -= m_delta_time->get_dt();
 	if (m_dot_remain <= 0s) {
 		m_dot_remain = dot_rate;
 		bump_dots();

@@ -10,4 +10,6 @@ struct StringHash : std::hash<std::string_view> {
 
 /// \brief Centralized storage for string keys.
 using StringSet = std::unordered_set<std::string, StringHash, std::equal_to<>>;
+
+[[nodiscard]] auto repoint_through(StringSet& out, std::string_view key) -> std::string_view;
 } // namespace xtag

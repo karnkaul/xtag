@@ -4,14 +4,22 @@
 #include <ranges>
 
 namespace xtag::gui::ui::widget {
-void TagEditor::set_should_open(Entry const& selected) {
-	m_replacement.clear();
-	m_input.clear();
-	m_list.clear(selected.tags.size());
-	m_dirty = false;
-	for (auto const& tag : selected.tags) { m_list.ins.push_back(In{.tag = tag}); }
+namespace {
+constexpr auto get_tag_color(TagType const type) -> ImVec4 {
+	switch (type) {
+	case TagType::Primary: return ImVec4{0.8f, 0.8f, 0.0f, 1.0f};
+	case TagType::Inherited: return ImVec4{0.0f, 0.8f, 1.0f, 1.0f};
+	default: return ImVec4{0.5f, 0.5f, 0.5f, 1.0f};
+	}
+}
+} // namespace
 
-	m_should_open = true;
+void TagEditor::extract_tags(Entry const& selected) {
+	m_input.clear();
+	m_tags.clear();
+	m_tags.reserve(selected.tags.size());
+	for (auto const& tag : selected.tags) { m_tags.push_back(Tag{.in = tag}); }
+	m_dirty = false;
 }
 
 void TagEditor::update_short_tags(std::span<ScanTag const> tags) {
@@ -26,32 +34,21 @@ void TagEditor::update_short_tags(std::span<ScanTag const> tags) {
 			ImGui::TextUnformatted("...");
 			break;
 		}
-		auto const color = widget::get_tag_color(tag.type);
+		auto const color = get_tag_color(tag.type);
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
 		ImGui::TextColored(color, "%s", tag.value.data());
 	}
 }
 
-auto TagEditor::update() -> bool {
-	if (m_should_open) {
-		m_should_open = false;
-		m_input.clear();
-		ImGui::OpenPopup(label_v.c_str());
-	}
-
-	if (!ImGui::BeginPopup(label_v.c_str())) { return false; }
-
+auto TagEditor::update() -> Action {
 	update_header();
 	update_tags();
 	ImGui::Separator();
 	update_new_tag();
 	ImGui::Separator();
 	auto ret = update_buttons();
-
-	ImGui::EndPopup();
-
-	if (ret) { compute_replacement(); }
-	return ret;
+	if (ret) { ret = compute_replacement(); }
+	return ret ? Action::ReplaceTags : Action::None;
 }
 
 void TagEditor::update_header() const {
@@ -65,24 +62,22 @@ void TagEditor::update_header() const {
 void TagEditor::update_tags() {
 	if (!ImGui::BeginListBox("tags", {200.0f, 0.0f})) { return; }
 
-	for (auto [index, tag] : std::views::enumerate(m_list.ins)) {
-		ImGui::BeginDisabled(tag.tag.type != TagType::Primary);
-		m_dirty |= ImGui::Checkbox(klib::FixedString{"##keep_in{}", index}.c_str(), &tag.should_keep);
+	for (auto [index, tag] : std::views::enumerate(m_tags)) {
+		ImGui::BeginDisabled(tag.is_input() && !tag.is_primary());
+		m_dirty |= ImGui::Checkbox(klib::FixedString{"##keep{}", index}.c_str(), &tag.should_keep);
 		ImGui::EndDisabled();
-		ImGui::SameLine();
-		ImGui::PushStyleColor(ImGuiCol_Text, get_tag_color(tag.tag.type));
-		ImGui::TextUnformatted(tag.tag.value.data());
-		ImGui::PopStyleColor();
-	}
 
-	for (auto [index, tag] : std::views::enumerate(m_list.outs)) {
-		auto keep = true;
-		ImGui::Checkbox(klib::FixedString{"##keep_out{}", index}.c_str(), &keep);
 		ImGui::SameLine();
-		ImGui::TextUnformatted(tag.c_str());
-		if (!keep) {
-			m_list.outs.erase(m_list.outs.begin() + std::ptrdiff_t(index));
-			break;
+		if (tag.is_input()) {
+			ImGui::PushStyleColor(ImGuiCol_Text, get_tag_color(tag.in.type));
+			ImGui::TextUnformatted(tag.in.value.data());
+			ImGui::PopStyleColor();
+		} else {
+			ImGui::TextUnformatted(tag.new_value.data());
+			if (!tag.should_keep) {
+				m_tags.erase(m_tags.begin() + std::ptrdiff_t(index));
+				break;
+			}
 		}
 	}
 
@@ -96,7 +91,7 @@ void TagEditor::update_new_tag() {
 	auto const new_tag = m_input.as_view();
 	ImGui::BeginDisabled(new_tag.empty());
 	if (ImGui::Button("Add")) {
-		m_list.outs.emplace_back(new_tag);
+		m_tags.push_back(Tag{.new_value = repoint_through(*m_tag_storage, new_tag)});
 		m_input.clear();
 		m_dirty = true;
 	}
@@ -106,7 +101,7 @@ void TagEditor::update_new_tag() {
 auto TagEditor::update_buttons() const -> bool {
 	auto ret = false;
 	ImGui::BeginDisabled(!m_dirty);
-	if (ImGui::Button("Commit")) {
+	if (ImGui::Button("Save Changes")) {
 		ret = true;
 		ImGui::CloseCurrentPopup();
 	}
@@ -116,21 +111,19 @@ auto TagEditor::update_buttons() const -> bool {
 	return ret;
 }
 
-void TagEditor::compute_replacement() {
+auto TagEditor::compute_replacement() -> bool {
 	m_replacement.clear();
-	if (m_list.outs.empty() && std::ranges::all_of(m_list.ins, [](In const& in) { return in.should_keep; })) { return; }
+	if (std::ranges::all_of(m_tags, [](Tag const& tag) { return tag.is_input() && tag.should_keep; })) { return false; }
 
-	for (auto const& in : m_list.ins) {
-		if (!in.should_keep || in.tag.type != TagType::Primary) { continue; }
-		m_replacement.emplace_back(in.tag.value);
+	for (auto& tag : m_tags) {
+		if (!tag.is_input()) {
+			m_replacement.push_back(tag.new_value);
+			continue;
+		}
+		if (!tag.should_keep || !tag.is_primary()) { continue; }
+		m_replacement.push_back(tag.in.value);
 	}
-	std::ranges::move(m_list.outs, std::back_inserter(m_replacement));
-	m_list.clear();
-}
 
-void TagEditor::List::clear(std::size_t const ins_reserve) {
-	ins.clear();
-	outs.clear();
-	ins.reserve(ins_reserve);
+	return true;
 }
 } // namespace xtag::gui::ui::widget

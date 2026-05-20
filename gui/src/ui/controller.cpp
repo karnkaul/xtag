@@ -1,5 +1,6 @@
 #include "ui/controller.hpp"
 #include "app/log.hpp"
+#include "ui/entry_data.hpp"
 
 namespace xtag::gui::ui {
 namespace {
@@ -16,38 +17,30 @@ template <typename T>
 }
 } // namespace
 
+Controller::Controller(Instance& instance, StringSet& tag_storage, DeltaTime const& delta_time)
+	: m_instance(&instance), m_main_window(tag_storage), m_loading_modal(delta_time) {}
+
 void Controller::set_styles(ImGuiStyle& style) { style.CellPadding = {6.0f, 6.0f}; }
 
-void Controller::initialize(Services const& services) {
-	Object::initialize(services);
-
-	m_instance = &services.get<Instance>();
-	m_delta_time = &services.get<DeltaTime>();
-
-	m_main_menu.initialize(services);
-	m_main_window.initialize(services);
-
-	m_state = State::Running;
-}
-
 void Controller::update() {
-	if (ImGui::BeginMainMenuBar()) {
-		m_main_menu.update();
-		ImGui::EndMainMenuBar();
-	}
-
 	auto const& viewport = *ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos({0.0f, viewport.WorkPos.y});
 	ImGui::SetNextWindowSize(viewport.WorkSize);
 	ImGui::Begin("main", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
-	m_main_window.update();
-	m_loading_modal.update(m_delta_time->get_dt());
+	auto const action = m_main_window.update();
+	m_loading_modal.update();
 	poll_future();
 
-	if constexpr (klib::debug_v) { m_test_modal.update(m_delta_time->get_dt()); }
-
 	ImGui::End();
+
+	if (m_future.valid()) { return; }
+
+	switch (action) {
+	case Action::None: return;
+	case Action::RefreshRoot: refresh_root_directory(); break;
+	case Action::ReplaceTags: replace_tags(); break;
+	}
 }
 
 void Controller::on_drop(fs::path const& root) {
@@ -62,6 +55,8 @@ void Controller::shutdown() {
 }
 
 void Controller::refresh_root_directory() {
+	KLIB_ASSERT(!m_future.valid());
+
 	if (m_root.empty()) {
 		log.warn("attempt to refresh empty root directory");
 		return;
@@ -78,19 +73,25 @@ void Controller::refresh_root_directory() {
 	m_loading_modal.set_should_open();
 }
 
-void Controller::replace_tags(fs::path const& path, std::span<std::string_view const> tags) {
-	auto const result = m_instance->replace_tags(path, tags);
+void Controller::replace_tags() {
+	KLIB_ASSERT(!m_future.valid());
+
+	auto const selected = m_main_window.get_selected();
+	if (!selected || selected->path.empty()) { return; }
+
+	auto const replacement_tags = m_main_window.get_replacement_tags();
+	auto const result = [&] {
+		if (replacement_tags.empty()) { return m_instance->erase_tags(selected->path); }
+		return m_instance->replace_tags(selected->path, replacement_tags);
+	}();
+
 	if (!result) {
-		log.error("TODO: failed to replace tags on '{}': {}", path.generic_string(), result.error().message);
+		log.error("TODO: failed to replace tags on '{}': {}", selected->path.generic_string(), result.error().message);
 		return;
 	}
 
-	log.info("tags replaced successfully: '{}', refreshing root directory...", path.generic_string());
+	log.info("tags replaced successfully: '{}', refreshing root directory", selected->path.generic_string());
 	refresh_root_directory();
-}
-
-void Controller::open_test_modal() {
-	if constexpr (klib::debug_v) { m_test_modal.set_should_open(); }
 }
 
 void Controller::poll_future() {
@@ -107,7 +108,10 @@ void Controller::poll_future() {
 		return;
 	}
 
-	m_main_window.set_list(std::move(*result));
+	result->sort_entries();
+	for (auto& entry : result->entries) { EntryData::write_to(entry, result->path); }
+
+	m_main_window.set_list(std::make_shared<EntryList const>(std::move(*result)));
 	m_loading_modal.set_should_close();
 }
 } // namespace xtag::gui::ui

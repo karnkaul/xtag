@@ -1,10 +1,7 @@
 #pragma once
 #include "clap/result.hpp"
 #include "gvdi/app.hpp"
-#include "service/delta_time.hpp"
-#include "service/services.hpp"
 #include "ui/controller.hpp"
-#include "xtag/instance.hpp"
 
 namespace xtag::gui {
 class App : public gvdi::App {
@@ -22,10 +19,10 @@ class App : public gvdi::App {
 	[[nodiscard]] auto parse_args(int argc, char const* const* argv) -> clap::Result;
 	void initialize();
 
-	Services m_services{};
+	StringSet m_tag_storage{};
 	Instance m_instance{};
 	DeltaTime m_delta_time{};
 
-	ui::Controller m_controller{};
+	std::optional<ui::Controller> m_controller{};
 };
 } // namespace xtag::gui

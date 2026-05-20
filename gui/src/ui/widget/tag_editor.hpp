@@ -1,32 +1,32 @@
 #pragma once
+#include "klib/ptr.hpp"
+#include "ui/action.hpp"
 #include "ui/widget/im_input_text.hpp"
+#include "xtag/string_set.hpp"
 #include "xtag/types.hpp"
 #include <vector>
 
 namespace xtag::gui::ui::widget {
 class TagEditor {
   public:
-	static constexpr auto label_v = klib::CString{"tag_editor"};
-
 	static void update_short_tags(std::span<ScanTag const> tags);
 
-	void set_should_open(Entry const& selected);
+	explicit TagEditor(StringSet& tag_storage) : m_tag_storage(&tag_storage) {}
 
-	auto update() -> bool;
+	void extract_tags(Entry const& selected);
 
-	[[nodiscard]] auto get_replacement() const -> std::span<std::string const> { return m_replacement; }
+	auto update() -> Action;
+
+	[[nodiscard]] auto get_replacement() const -> std::span<std::string_view const> { return m_replacement; }
 
   private:
-	struct In {
-		ScanTag tag{};
+	struct Tag {
+		[[nodiscard]] auto is_input() const -> bool { return new_value.empty(); }
+		[[nodiscard]] auto is_primary() const -> bool { return in.type == TagType::Primary; }
+
+		ScanTag in{};
 		bool should_keep{true};
-	};
-
-	struct List {
-		void clear(std::size_t ins_reserve = 0);
-
-		std::vector<In> ins{};
-		std::vector<std::string> outs{};
+		std::string_view new_value{};
 	};
 
 	void update_header() const;
@@ -34,21 +34,14 @@ class TagEditor {
 	void update_new_tag();
 	[[nodiscard]] auto update_buttons() const -> bool;
 
-	void compute_replacement();
+	auto compute_replacement() -> bool;
 
-	List m_list{};
+	klib::Ptr<StringSet> m_tag_storage{};
+
+	std::vector<Tag> m_tags{};
 	ImInputText m_input{};
-	std::vector<std::string> m_replacement{};
+	std::vector<std::string_view> m_replacement{};
 
-	bool m_should_open{};
 	bool m_dirty{};
 };
-
-constexpr auto get_tag_color(TagType const type) {
-	switch (type) {
-	case TagType::Primary: return ImVec4{0.8f, 0.8f, 0.0f, 1.0f};
-	case TagType::Inherited: return ImVec4{0.0f, 0.8f, 1.0f, 1.0f};
-	default: return ImVec4{0.5f, 0.5f, 0.5f, 1.0f};
-	}
-}
 } // namespace xtag::gui::ui::widget
