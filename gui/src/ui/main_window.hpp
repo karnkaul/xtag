@@ -1,18 +1,16 @@
 #pragma once
 #include "ui/action.hpp"
-#include "ui/object.hpp"
 #include "ui/widget/file_browser.hpp"
 #include "ui/widget/scan_data.hpp"
 #include "ui/widget/tag_editor.hpp"
 #include "xtag/string_set.hpp"
 
 namespace xtag::gui::ui {
-class MainWindow : public Object {
+class MainWindow {
   public:
 	explicit MainWindow(StringSet& tag_storage);
 
-	void update() final;
-	[[nodiscard]] auto get_action() const -> Action { return m_action; }
+	auto update() -> Action;
 
 	void set_list(std::shared_ptr<EntryList const> list);
 	void set_filter(std::string_view query);

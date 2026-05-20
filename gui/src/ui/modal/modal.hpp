@@ -1,9 +1,9 @@
 #pragma once
+#include "klib/base_types.hpp"
 #include "klib/string/c_string.hpp"
-#include "ui/object.hpp"
 
 namespace xtag::gui::ui {
-class Modal : public Object {
+class Modal : public klib::Polymorphic {
   public:
 	explicit(false) Modal(klib::CString const label = "<Untitled>") : label(label) {}
 
@@ -11,7 +11,7 @@ class Modal : public Object {
 	void set_should_open(bool should_open = true);
 	void set_should_close(bool should_close = true);
 
-	void update() override;
+	void update();
 
 	klib::CString label{};
 

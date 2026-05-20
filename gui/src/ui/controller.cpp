@@ -28,7 +28,7 @@ void Controller::update() {
 	ImGui::SetNextWindowSize(viewport.WorkSize);
 	ImGui::Begin("main", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
-	m_main_window.update();
+	auto const action = m_main_window.update();
 	m_loading_modal.update();
 	poll_future();
 
@@ -36,7 +36,7 @@ void Controller::update() {
 
 	if (m_future.valid()) { return; }
 
-	switch (m_main_window.get_action()) {
+	switch (action) {
 	case Action::None: return;
 	case Action::RefreshRoot: refresh_root_directory(); break;
 	case Action::ReplaceTags: replace_tags(); break;

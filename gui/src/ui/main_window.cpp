@@ -11,7 +11,7 @@ constexpr auto tag_editor_label_v = klib::CString{"tag_editor"};
 
 MainWindow::MainWindow(StringSet& tag_storage) : m_tag_editor(tag_storage) {}
 
-void MainWindow::update() {
+auto MainWindow::update() -> Action {
 	m_action = Action::None;
 
 	update_header();
@@ -19,6 +19,8 @@ void MainWindow::update() {
 	update_controls();
 	update_current_page();
 	update_tag_editor();
+
+	return std::exchange(m_action, Action::None);
 }
 
 void MainWindow::set_list(std::shared_ptr<EntryList const> list) {
