@@ -29,7 +29,6 @@ class Controller {
 
 	klib::Ptr<Instance> m_instance{};
 
-	std::shared_ptr<EntryList> m_entry_list{};
 	MainWindow m_main_window;
 
 	fs::path m_root{};

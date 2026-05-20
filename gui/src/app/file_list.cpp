@@ -5,7 +5,7 @@
 
 namespace xtag::gui {
 FileList::FileList(std::shared_ptr<EntryList const> list, int const page_limit) {
-	if (!list || list->entries.empty()) { throw Panic{"FileBrowser: EntryList is empty"}; }
+	if (!list || list->entries.empty()) { throw Panic{"FileList: EntryList is empty"}; }
 	refresh(std::move(list));
 	repaginate(page_limit);
 }

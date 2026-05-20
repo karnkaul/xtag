@@ -108,12 +108,10 @@ void Controller::poll_future() {
 		return;
 	}
 
-	m_entry_list = std::make_shared<EntryList>(std::move(*result));
+	result->sort_entries();
+	for (auto& entry : result->entries) { EntryData::write_to(entry, result->path); }
 
-	m_entry_list->sort_entries();
-	for (auto& entry : m_entry_list->entries) { EntryData::write_to(entry, m_entry_list->path); }
-
-	m_main_window.set_list(m_entry_list);
+	m_main_window.set_list(std::make_shared<EntryList const>(std::move(*result)));
 	m_loading_modal.set_should_close();
 }
 } // namespace xtag::gui::ui
