@@ -25,22 +25,13 @@ class FileList : public klib::Pinned {
 	[[nodiscard]] auto get_page_count() const -> int { return m_page_count; }
 	[[nodiscard]] auto get_page_limit() const -> int { return m_page_limit; }
 
-	void refresh(std::shared_ptr<EntryList const> list);
+	void refresh(std::shared_ptr<EntryList const> list, int new_page_limit = -1);
 	void repaginate(int page_limit);
 
 	auto select_entry(Entry const& subentry) -> bool;
 	auto set_page_number(int page_number) -> bool;
 
-	template <typename PredT>
-	void apply_filter(PredT should_include) {
-		m_filtered.clear();
-		for (auto const& entry : m_list->entries) {
-			if (!should_include(entry)) { continue; }
-			m_filtered.emplace_back(&entry);
-		}
-		repaginate(m_page_limit);
-	}
-
+	void filter_by_query(std::string_view query);
 	void clear_filter();
 
   private:

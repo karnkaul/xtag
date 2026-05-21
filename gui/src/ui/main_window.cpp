@@ -1,7 +1,6 @@
 #include "ui/main_window.hpp"
 #include "app/log.hpp"
 #include "ui/entry_data.hpp"
-#include "xtag/query.hpp"
 #include <imgui.h>
 
 namespace xtag::gui::ui {
@@ -31,21 +30,6 @@ void MainWindow::set_list(std::shared_ptr<EntryList const> list) {
 		m_file_browser.file_list->refresh(std::move(list));
 	}
 	log.debug("Directory loaded successfully: '{}'", m_root_directory);
-}
-
-void MainWindow::set_filter(std::string_view const query) {
-	if (!m_file_browser.file_list) { return; }
-
-	if (query.empty()) {
-		m_file_browser.file_list->clear_filter();
-	} else {
-		auto const expression = query::parse(query);
-		auto const should_include = [&](Entry const& entry) {
-			auto const& data = EntryData::read_from(entry);
-			return expression.is_match(data.relative_path, entry.tags);
-		};
-		m_file_browser.file_list->apply_filter(should_include);
-	}
 }
 
 auto MainWindow::get_selected() const -> klib::Ptr<Entry const> {
@@ -101,8 +85,7 @@ void MainWindow::update_table() {
 }
 
 void MainWindow::update_controls() {
-	auto query = std::string_view{};
-	if (m_file_browser.update_filter(query)) { set_filter(query); }
+	m_file_browser.update_filter();
 	m_file_browser.update_pagination();
 }
 

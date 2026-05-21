@@ -13,7 +13,6 @@ class MainWindow {
 	auto update() -> Action;
 
 	void set_list(std::shared_ptr<EntryList const> list);
-	void set_filter(std::string_view query);
 
 	[[nodiscard]] auto get_selected() const -> klib::Ptr<Entry const>;
 	[[nodiscard]] auto get_replacement_tags() const -> std::span<std::string_view const>;

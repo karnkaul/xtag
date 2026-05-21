@@ -11,7 +11,7 @@ class FileBrowser {
 	static constexpr auto default_page_limit_v = page_limits_v[3];
 
 	void update_pagination();
-	[[nodiscard]] auto update_filter(std::string_view& out_query) -> bool;
+	auto update_filter() -> bool;
 	void update_current_page();
 
 	std::optional<FileList> file_list{};

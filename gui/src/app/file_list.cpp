@@ -1,5 +1,6 @@
 #include "app/file_list.hpp"
 #include "xtag/panic.hpp"
+#include "xtag/query.hpp"
 #include <algorithm>
 #include <ranges>
 
@@ -22,7 +23,7 @@ auto FileList::get_current_page() const -> Page {
 	return Page{.entries = span.subspan(0, size), .offset_from_start = int(offset)};
 }
 
-void FileList::refresh(std::shared_ptr<EntryList const> list) {
+void FileList::refresh(std::shared_ptr<EntryList const> list, int new_page_limit) {
 	KLIB_ASSERT(list);
 
 	auto const was_selected = m_selected.entry ? m_selected.entry->path : fs::path{};
@@ -40,7 +41,8 @@ void FileList::refresh(std::shared_ptr<EntryList const> list) {
 	if (!was_selected.empty()) { m_selected = find_entry(was_selected); }
 	if (!m_selected.entry) { m_selected = EntryView{.entry = m_filtered.front(), .index = 0}; }
 
-	repaginate(m_page_limit);
+	if (new_page_limit <= 0) { new_page_limit = m_page_limit; }
+	repaginate(new_page_limit);
 }
 
 void FileList::repaginate(int const page_limit) {
@@ -70,9 +72,18 @@ auto FileList::set_page_number(int const page_number) -> bool {
 	return true;
 }
 
-void FileList::clear_filter() {
-	apply_filter([](auto const&...) { return true; });
+void FileList::filter_by_query(std::string_view const query) {
+	// TODO: use vector of indices as filter, clear for empty filter
+	auto const expression = query::parse(query);
+	m_filtered.clear();
+	for (auto const& entry : m_list->entries) {
+		auto const filename = entry.path.filename().generic_string();
+		if (!query.empty() && !expression.is_match(filename, entry.tags)) { continue; }
+		m_filtered.emplace_back(&entry);
+	}
 }
+
+void FileList::clear_filter() { filter_by_query({}); }
 
 void FileList::clear_pointers(std::size_t const reserve) {
 	m_selected = {};

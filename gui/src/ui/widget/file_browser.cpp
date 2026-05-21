@@ -74,10 +74,9 @@ void FileBrowser::update_pagination() {
 	if (new_page_limit != page_limit) { file_list->repaginate(new_page_limit); }
 }
 
-auto FileBrowser::update_filter(std::string_view& out_query) -> bool {
+auto FileBrowser::update_filter() -> bool {
 	ImGui::SetNextItemWidth(150.0f);
 	m_query_input.update("query");
-	out_query = m_query_input.as_view();
 	ImGui::SameLine();
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
 	ImGui::TextColored({0.5f, 0.5f, 0.5f, 1.0f}, "[?]");
@@ -90,9 +89,10 @@ auto FileBrowser::update_filter(std::string_view& out_query) -> bool {
 	ImGui::SameLine();
 	if (ImGui::Button("clear")) {
 		m_query_input.clear();
-		out_query = {};
 		ret = true;
 	}
+
+	if (ret) { file_list->filter_by_query(m_query_input.as_view()); }
 	return ret;
 }
 
