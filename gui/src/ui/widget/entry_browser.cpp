@@ -105,12 +105,11 @@ void EntryBrowser::update_current_page() {
 	auto number_width = 1;
 	for (auto count = page.offset_from_start + int(page.entries.size()); count >= 10; count /= 10) { ++number_width; }
 
-	for (auto const& [index, entry] : std::views::enumerate(page.entries)) {
-		auto const& data = EntryData::read_from(*entry);
+	for (auto const& [index, entry_data] : std::views::enumerate(page.entries)) {
 		auto const number = int(index) + page.offset_from_start + 1;
 		ImGui::TextUnformatted(klib::FixedString{"{: >{}}.", number, number_width}.c_str());
 		ImGui::SameLine();
-		if (ImGui::Selectable(data.relative_path.c_str(), entry == &book->get_selected())) { book->select_entry(*entry); }
+		if (ImGui::Selectable(entry_data->relative_path.c_str(), entry_data == &book->get_selected())) { book->select_entry(*entry_data); }
 	}
 }
 } // namespace xtag::gui::ui::widget

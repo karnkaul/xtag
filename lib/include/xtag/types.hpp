@@ -1,7 +1,6 @@
 #pragma once
 #include "klib/enum/bitops.hpp"
 #include "klib/enum/name.hpp"
-#include <any>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -104,7 +103,6 @@ struct Entry {
 	Type type{};
 	fs::path path{};
 	std::vector<ScanTag> tags{};
-	std::any custom_payload{};
 };
 
 struct EntryList {

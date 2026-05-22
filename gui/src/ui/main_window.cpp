@@ -22,8 +22,8 @@ auto MainWindow::update() -> Action {
 	return std::exchange(m_action, Action::None);
 }
 
-void MainWindow::set_list(std::shared_ptr<EntryList const> list) {
-	m_root_directory = list->path.generic_string();
+void MainWindow::set_list(std::shared_ptr<EntryDataList const> list) {
+	m_root_directory = list->path;
 	if (!m_entry_browser.book) {
 		m_entry_browser.book.emplace(std::move(list), widget::EntryBrowser::default_page_limit_v);
 	} else {
@@ -34,7 +34,7 @@ void MainWindow::set_list(std::shared_ptr<EntryList const> list) {
 
 auto MainWindow::get_selected() const -> klib::Ptr<Entry const> {
 	if (!m_entry_browser.book) { return {}; }
-	return &m_entry_browser.book->get_selected();
+	return &m_entry_browser.book->get_selected().entry;
 }
 
 auto MainWindow::get_replacement_tags() const -> std::span<std::string_view const> { return m_tag_editor.get_replacement(); }
@@ -63,19 +63,18 @@ void MainWindow::update_table() {
 		ImGui::TableNextColumn();
 		if (m_entry_browser.book) {
 			auto const& selected = m_entry_browser.book->get_selected();
-			if (selected.type == EntryType::Directory) {
+			if (selected.entry.type == EntryType::Directory) {
 				ImGui::TextUnformatted("directory:");
 			} else {
 				ImGui::TextUnformatted("file:");
 			}
 
-			auto const& data = EntryData::read_from(selected);
 			ImGui::SameLine();
-			ImGui::TextUnformatted(data.relative_path.c_str());
-			widget::TagEditor::update_short_tags(selected.tags);
+			ImGui::TextUnformatted(selected.relative_path.c_str());
+			widget::TagEditor::update_short_tags(selected.entry.tags);
 
 			if (ImGui::Button("edit tags")) {
-				m_tag_editor.extract_tags(selected);
+				m_tag_editor.extract_tags(selected.entry);
 				m_open_tag_editor = true;
 			}
 		}

@@ -1,11 +1,16 @@
 #include "ui/entry_data.hpp"
 
 namespace xtag::gui::ui {
-void EntryData::write_to(Entry& out, fs::path const& root) { out.custom_payload = EntryData{.relative_path = fs::relative(out.path, root).generic_string()}; }
-
-auto EntryData::read_from(Entry const& entry) -> EntryData const& {
-	if (auto const* ret = std::any_cast<EntryData>(&entry.custom_payload)) { return *ret; }
-	static auto const s_default = EntryData{};
-	return s_default;
+auto EntryDataList::from(EntryList entry_list) -> EntryDataList {
+	entry_list.sort_entries();
+	auto ret = EntryDataList{.path = entry_list.path.generic_string()};
+	ret.entries.reserve(entry_list.entries.size());
+	for (auto& entry : entry_list.entries) {
+		auto entry_data = EntryData{.entry = std::move(entry)};
+		entry_data.relative_path = fs::relative(entry_data.entry.path, entry_list.path).generic_string();
+		entry_data.filename = entry_data.entry.path.filename().string();
+		ret.entries.push_back(std::move(entry_data));
+	}
+	return ret;
 }
 } // namespace xtag::gui::ui
