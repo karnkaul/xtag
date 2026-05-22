@@ -3,9 +3,15 @@
 
 namespace xtag::gui::ui {
 struct EntryData {
-	[[nodiscard]] static auto read_from(Entry const& entry) -> EntryData const&;
-	static void write_to(Entry& out, fs::path const& root);
-
+	Entry entry{};
 	std::string relative_path{};
+	std::string filename{};
+};
+
+struct EntryDataList {
+	[[nodiscard]] static auto from(EntryList entry_list) -> EntryDataList;
+
+	std::string path{};
+	std::vector<EntryData> entries{};
 };
 } // namespace xtag::gui::ui

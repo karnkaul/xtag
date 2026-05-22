@@ -1,6 +1,6 @@
 #pragma once
 #include "ui/action.hpp"
-#include "ui/widget/file_browser.hpp"
+#include "ui/widget/entry_browser.hpp"
 #include "ui/widget/scan_data.hpp"
 #include "ui/widget/tag_editor.hpp"
 #include "xtag/string_set.hpp"
@@ -12,8 +12,7 @@ class MainWindow {
 
 	auto update() -> Action;
 
-	void set_list(std::shared_ptr<EntryList const> list);
-	void set_filter(std::string_view query);
+	void set_list(std::shared_ptr<EntryDataList const> list);
 
 	[[nodiscard]] auto get_selected() const -> klib::Ptr<Entry const>;
 	[[nodiscard]] auto get_replacement_tags() const -> std::span<std::string_view const>;
@@ -27,8 +26,7 @@ class MainWindow {
 	void update_current_page();
 	void update_tag_editor();
 
-	std::string m_root_directory{};
-	widget::FileBrowser m_file_browser{};
+	widget::EntryBrowser m_entry_browser{};
 	widget::TagEditor m_tag_editor;
 	bool m_open_tag_editor{};
 

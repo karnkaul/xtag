@@ -1,7 +1,6 @@
 #include "ui/main_window.hpp"
 #include "app/log.hpp"
 #include "ui/entry_data.hpp"
-#include "xtag/query.hpp"
 #include <imgui.h>
 
 namespace xtag::gui::ui {
@@ -23,43 +22,23 @@ auto MainWindow::update() -> Action {
 	return std::exchange(m_action, Action::None);
 }
 
-void MainWindow::set_list(std::shared_ptr<EntryList const> list) {
-	m_root_directory = list->path.generic_string();
-	if (!m_file_browser.file_list) {
-		m_file_browser.file_list.emplace(std::move(list), widget::FileBrowser::default_page_limit_v);
-	} else {
-		m_file_browser.file_list->refresh(std::move(list));
-	}
-	log.debug("Directory loaded successfully: '{}'", m_root_directory);
-}
-
-void MainWindow::set_filter(std::string_view const query) {
-	if (!m_file_browser.file_list) { return; }
-
-	if (query.empty()) {
-		m_file_browser.file_list->clear_filter();
-	} else {
-		auto const expression = query::parse(query);
-		auto const should_include = [&](Entry const& entry) {
-			auto const& data = EntryData::read_from(entry);
-			return expression.is_match(data.relative_path, entry.tags);
-		};
-		m_file_browser.file_list->apply_filter(should_include);
-	}
+void MainWindow::set_list(std::shared_ptr<EntryDataList const> list) {
+	m_entry_browser.refresh_book(std::move(list));
+	log.debug("Directory loaded successfully: '{}'", m_entry_browser.book->get_root());
 }
 
 auto MainWindow::get_selected() const -> klib::Ptr<Entry const> {
-	if (!m_file_browser.file_list) { return {}; }
-	return &m_file_browser.file_list->get_selected();
+	if (!m_entry_browser.book) { return {}; }
+	return &m_entry_browser.book->get_selected().entry;
 }
 
 auto MainWindow::get_replacement_tags() const -> std::span<std::string_view const> { return m_tag_editor.get_replacement(); }
 
 void MainWindow::update_header() {
-	if (m_root_directory.empty()) {
+	if (!m_entry_browser.book) {
 		ImGui::TextUnformatted("drag a directory here to begin");
 	} else {
-		ImGui::TextUnformatted(m_root_directory.c_str());
+		ImGui::TextUnformatted(m_entry_browser.book->get_root().data());
 	}
 }
 
@@ -72,26 +51,25 @@ void MainWindow::update_table() {
 
 		ImGui::TableNextColumn();
 		scan_data.update();
-		ImGui::BeginDisabled(!m_file_browser.file_list);
+		ImGui::BeginDisabled(!m_entry_browser.book);
 		if (ImGui::Button("refresh")) { m_action = Action::RefreshRoot; }
 		ImGui::EndDisabled();
 
 		ImGui::TableNextColumn();
-		if (m_file_browser.file_list) {
-			auto const& selected = m_file_browser.file_list->get_selected();
-			if (selected.type == EntryType::Directory) {
+		if (m_entry_browser.book) {
+			auto const& selected = m_entry_browser.book->get_selected();
+			if (selected.entry.type == EntryType::Directory) {
 				ImGui::TextUnformatted("directory:");
 			} else {
 				ImGui::TextUnformatted("file:");
 			}
 
-			auto const& data = EntryData::read_from(selected);
 			ImGui::SameLine();
-			ImGui::TextUnformatted(data.relative_path.c_str());
-			widget::TagEditor::update_short_tags(selected.tags);
+			ImGui::TextUnformatted(selected.relative_path.c_str());
+			widget::TagEditor::update_short_tags(selected.entry.tags);
 
 			if (ImGui::Button("edit tags")) {
-				m_tag_editor.extract_tags(selected);
+				m_tag_editor.extract_tags(selected.entry.tags);
 				m_open_tag_editor = true;
 			}
 		}
@@ -101,14 +79,13 @@ void MainWindow::update_table() {
 }
 
 void MainWindow::update_controls() {
-	auto query = std::string_view{};
-	if (m_file_browser.update_filter(query)) { set_filter(query); }
-	m_file_browser.update_pagination();
+	m_entry_browser.update_filter();
+	m_entry_browser.update_pagination();
 }
 
 void MainWindow::update_current_page() {
 	if (!ImGui::BeginChild("current_page", {}, ImGuiChildFlags_Borders)) { return; }
-	m_file_browser.update_current_page();
+	m_entry_browser.update_current_page();
 	ImGui::EndChild();
 }
 

@@ -1,7 +1,6 @@
 #pragma once
 #include "klib/enum/bitops.hpp"
 #include "klib/enum/name.hpp"
-#include <any>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -18,12 +17,18 @@ struct Error {
 		NotSupported,
 		NoData,
 		TooBig,
+		IOError,
 	};
 
 	inline static auto const type_name_map = klib::EnumNameMap<Type>{
-		{Type::Unknown, "Unknown"},			{Type::InvalidArgument, "InvalidArgument"}, {Type::AccessDenied, "AccessDenied"},
-		{Type::PathTooLong, "PathTooLong"}, {Type::NotSupported, "NotSupported"},		{Type::NoData, "NoData"},
+		{Type::Unknown, "Unknown"},
+		{Type::InvalidArgument, "InvalidArgument"},
+		{Type::AccessDenied, "AccessDenied"},
+		{Type::PathTooLong, "PathTooLong"},
+		{Type::NotSupported, "NotSupported"},
+		{Type::NoData, "NoData"},
 		{Type::TooBig, "TooBig"},
+		{Type::IOError, "IoError"},
 	};
 
 	Type type{};
@@ -40,6 +45,7 @@ enum class ExitCode : std::int8_t {
 	NotSupported = 104,
 	NoData = 105,
 	TooBig = 106,
+	IOError = 107,
 };
 
 [[nodiscard]] constexpr auto to_exit_code(Error::Type const type) {
@@ -51,6 +57,7 @@ enum class ExitCode : std::int8_t {
 	case Error::Type::NotSupported: return ExitCode::NotSupported;
 	case Error::Type::NoData: return ExitCode::NoData;
 	case Error::Type::TooBig: return ExitCode::TooBig;
+	case Error::Type::IOError: return ExitCode::IOError;
 	default: return ExitCode::Failure;
 	}
 }
@@ -96,7 +103,6 @@ struct Entry {
 	Type type{};
 	fs::path path{};
 	std::vector<ScanTag> tags{};
-	std::any custom_payload{};
 };
 
 struct EntryList {

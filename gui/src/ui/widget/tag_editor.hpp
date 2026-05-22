@@ -13,7 +13,7 @@ class TagEditor {
 
 	explicit TagEditor(StringSet& tag_storage) : m_tag_storage(&tag_storage) {}
 
-	void extract_tags(Entry const& selected);
+	void extract_tags(std::span<ScanTag const> tags);
 
 	auto update() -> Action;
 

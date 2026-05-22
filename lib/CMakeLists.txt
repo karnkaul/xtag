@@ -29,9 +29,12 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS
   "${CMAKE_CURRENT_BINARY_DIR}/${version_header}"
 )
 
-file(GLOB_RECURSE sources LIST_DIRECTORIES false "src/*.[hc]pp")
 target_sources(${PROJECT_NAME} PRIVATE
-  ${sources}
+  src/detail/query_scanner.hpp
+  src/detail/util.hpp
+  src/xtag.cpp
+  $<$<BOOL:${XTAG_USE_XATTR}>:src/xattr.cpp>
+  $<$<BOOL:${XTAG_USE_ADS}>:src/ads.cpp>
 )
 
 if(WIN32)
