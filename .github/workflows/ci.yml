@@ -20,7 +20,7 @@ jobs:
             sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 10
             sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 10
       - name: configure
-        run: cmake -S . --preset=ninja-gcc -B build -DKCURL_CI_NO_LIBCURL=ON
+        run: cmake -S . --preset=ninja-gcc -B build
       - name: build debug
         run: cmake --build build --config=Debug -- -v
       - name: build release
@@ -41,7 +41,7 @@ jobs:
             sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 10
             sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 10
       - name: configure
-        run: cmake -S . --preset=ninja-clang -B build -DKCURL_CI_NO_LIBCURL=ON
+        run: cmake -S . --preset=ninja-clang -B build
       - name: build debug
         run: cmake --build build --config=Debug -- -v
       - name: build release
@@ -61,7 +61,7 @@ jobs:
             sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 10
             sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 10
       - name: configure
-        run: cmake -S . --preset=ninja-gcc -B build -DKCURL_CI_NO_LIBCURL=ON
+        run: cmake -S . --preset=ninja-gcc -B build
       - name: build debug
         run: cmake --build build --config=Debug -- -v
       - name: build release
@@ -82,7 +82,49 @@ jobs:
             sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 10
             sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 10
       - name: configure
-        run: cmake -S . --preset=ninja-clang -B build -DKCURL_CI_NO_LIBCURL=ON
+        run: cmake -S . --preset=ninja-clang -B build
+      - name: build debug
+        run: cmake --build build --config=Debug -- -v
+      - name: build release
+        run: cmake --build build --config=Release -- -v
+      - name: test debug
+        run: cd build && ctest -V -C Debug
+      - name: test release
+        run: cd build && ctest -V -C Release
+  x64-windows-vs22:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v6
+      - name: configure
+        run: cmake -S . --preset=vs22 -B build
+      - name: build debug
+        run: cmake --build build --config=Debug --parallel
+      - name: build release
+        run: cmake --build build --config=Release --parallel
+      - name: test debug
+        run: cd build && ctest -V -C Debug
+      - name: test release
+        run: cd build && ctest -V -C Release
+  x64-windows-clang:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v6
+      - name: configure
+        run: cmake -S . --preset=ninja-clang -B build
+      - name: build debug
+        run: cmake --build build --config=Debug -- -v
+      - name: build release
+        run: cmake --build build --config=Release -- -v
+      - name: test debug
+        run: cd build && ctest -V -C Debug
+      - name: test release
+        run: cd build && ctest -V -C Release
+  x64-mingw-gcc:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v6
+      - name: configure
+        run: cmake -S . --preset=ninja-gcc -B build
       - name: build debug
         run: cmake --build build --config=Debug -- -v
       - name: build release
