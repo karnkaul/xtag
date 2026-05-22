@@ -24,17 +24,17 @@ auto MainWindow::update() -> Action {
 
 void MainWindow::set_list(std::shared_ptr<EntryList const> list) {
 	m_root_directory = list->path.generic_string();
-	if (!m_file_browser.file_list) {
-		m_file_browser.file_list.emplace(std::move(list), widget::FileBrowser::default_page_limit_v);
+	if (!m_entry_browser.book) {
+		m_entry_browser.book.emplace(std::move(list), widget::EntryBrowser::default_page_limit_v);
 	} else {
-		m_file_browser.file_list->refresh(std::move(list));
+		m_entry_browser.book->refresh(std::move(list));
 	}
 	log.debug("Directory loaded successfully: '{}'", m_root_directory);
 }
 
 auto MainWindow::get_selected() const -> klib::Ptr<Entry const> {
-	if (!m_file_browser.file_list) { return {}; }
-	return &m_file_browser.file_list->get_selected();
+	if (!m_entry_browser.book) { return {}; }
+	return &m_entry_browser.book->get_selected();
 }
 
 auto MainWindow::get_replacement_tags() const -> std::span<std::string_view const> { return m_tag_editor.get_replacement(); }
@@ -56,13 +56,13 @@ void MainWindow::update_table() {
 
 		ImGui::TableNextColumn();
 		scan_data.update();
-		ImGui::BeginDisabled(!m_file_browser.file_list);
+		ImGui::BeginDisabled(!m_entry_browser.book);
 		if (ImGui::Button("refresh")) { m_action = Action::RefreshRoot; }
 		ImGui::EndDisabled();
 
 		ImGui::TableNextColumn();
-		if (m_file_browser.file_list) {
-			auto const& selected = m_file_browser.file_list->get_selected();
+		if (m_entry_browser.book) {
+			auto const& selected = m_entry_browser.book->get_selected();
 			if (selected.type == EntryType::Directory) {
 				ImGui::TextUnformatted("directory:");
 			} else {
@@ -85,13 +85,13 @@ void MainWindow::update_table() {
 }
 
 void MainWindow::update_controls() {
-	m_file_browser.update_filter();
-	m_file_browser.update_pagination();
+	m_entry_browser.update_filter();
+	m_entry_browser.update_pagination();
 }
 
 void MainWindow::update_current_page() {
 	if (!ImGui::BeginChild("current_page", {}, ImGuiChildFlags_Borders)) { return; }
-	m_file_browser.update_current_page();
+	m_entry_browser.update_current_page();
 	ImGui::EndChild();
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "ui/action.hpp"
-#include "ui/widget/file_browser.hpp"
+#include "ui/widget/entry_browser.hpp"
 #include "ui/widget/scan_data.hpp"
 #include "ui/widget/tag_editor.hpp"
 #include "xtag/string_set.hpp"
@@ -27,7 +27,7 @@ class MainWindow {
 	void update_tag_editor();
 
 	std::string m_root_directory{};
-	widget::FileBrowser m_file_browser{};
+	widget::EntryBrowser m_entry_browser{};
 	widget::TagEditor m_tag_editor;
 	bool m_open_tag_editor{};
 

@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 namespace xtag::gui {
-class FileList : public klib::Pinned {
+class EntryBook : public klib::Pinned {
   public:
 	struct Page {
 		std::span<klib::Ptr<Entry const> const> entries{};
@@ -15,7 +15,7 @@ class FileList : public klib::Pinned {
 	static constexpr auto min_page_limit_v{10};
 	static constexpr auto max_page_limit_v{1000};
 
-	explicit FileList(std::shared_ptr<EntryList const> list, int page_limit = max_page_limit_v);
+	explicit EntryBook(std::shared_ptr<EntryList const> list, int page_limit = max_page_limit_v);
 
 	[[nodiscard]] auto get_root() const -> fs::path const& { return m_list->path; }
 	[[nodiscard]] auto get_filtered() const -> std::span<klib::Ptr<Entry const> const> { return m_filtered.empty() ? m_all : m_filtered; }

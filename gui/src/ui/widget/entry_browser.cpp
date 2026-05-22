@@ -1,4 +1,4 @@
-#include "ui/widget/file_browser.hpp"
+#include "ui/widget/entry_browser.hpp"
 #include "klib/string/fixed_string.hpp"
 #include "ui/entry_data.hpp"
 #include <ranges>
@@ -38,15 +38,15 @@ auto update_page_size(int const page_limit) -> int {
 		auto const update_limit = [&](int const limit) {
 			if (ImGui::Selectable(klib::FixedString{"{}", limit}.c_str(), page_limit == limit)) { ret = limit; }
 		};
-		for (auto const limit : FileBrowser::page_limits_v) { update_limit(limit); }
+		for (auto const limit : EntryBrowser::page_limits_v) { update_limit(limit); }
 		ImGui::EndCombo();
 	}
 	return ret;
 }
 } // namespace
 
-void FileBrowser::update_pagination() {
-	if (!file_list) {
+void EntryBrowser::update_pagination() {
+	if (!book) {
 		update_page_number(0, 0);
 		ImGui::SameLine();
 		ImGui::TextUnformatted("0-0 / 0");
@@ -57,24 +57,24 @@ void FileBrowser::update_pagination() {
 		return;
 	}
 
-	auto const page_number = file_list->get_page_number();
-	auto const new_page_number = update_page_number(page_number, file_list->get_page_count());
-	if (new_page_number != page_number) { file_list->set_page_number(new_page_number); }
+	auto const page_number = book->get_page_number();
+	auto const new_page_number = update_page_number(page_number, book->get_page_count());
+	if (new_page_number != page_number) { book->set_page_number(new_page_number); }
 
-	auto const page = file_list->get_current_page();
+	auto const page = book->get_current_page();
 	auto const start_number = page.offset_from_start + 1;
 	auto const end_number = start_number + int(page.entries.size()) - 1;
-	auto const filtered_count = int(file_list->get_filtered().size());
+	auto const filtered_count = int(book->get_filtered().size());
 	ImGui::SameLine();
 	ImGui::TextUnformatted(klib::FixedString{"{}-{} / {}", start_number, end_number, filtered_count}.c_str());
 
 	ImGui::SameLine();
-	auto const page_limit = file_list->get_page_limit();
+	auto const page_limit = book->get_page_limit();
 	auto const new_page_limit = update_page_size(page_limit);
-	if (new_page_limit != page_limit) { file_list->repaginate(new_page_limit); }
+	if (new_page_limit != page_limit) { book->repaginate(new_page_limit); }
 }
 
-auto FileBrowser::update_filter() -> bool {
+auto EntryBrowser::update_filter() -> bool {
 	ImGui::SetNextItemWidth(150.0f);
 	static constexpr auto flags_v = ImGuiInputTextFlags_EnterReturnsTrue;
 	auto ret = m_query_input.update("query", flags_v);
@@ -84,7 +84,7 @@ auto FileBrowser::update_filter() -> bool {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
 	ImGui::SetItemTooltip("Conjunction of space separated predicates.\npredicate syntax: [-][filename=|tag=]<pattern>");
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!file_list);
+	ImGui::BeginDisabled(!book);
 	ret |= ImGui::Button("search");
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -93,14 +93,14 @@ auto FileBrowser::update_filter() -> bool {
 		ret = true;
 	}
 
-	if (ret) { file_list->filter_by_query(m_query_input.as_view()); }
+	if (ret) { book->filter_by_query(m_query_input.as_view()); }
 	return ret;
 }
 
-void FileBrowser::update_current_page() {
-	if (!file_list) { return; }
+void EntryBrowser::update_current_page() {
+	if (!book) { return; }
 
-	auto const page = file_list->get_current_page();
+	auto const page = book->get_current_page();
 
 	auto number_width = 1;
 	for (auto count = page.offset_from_start + int(page.entries.size()); count >= 10; count /= 10) { ++number_width; }
@@ -110,7 +110,7 @@ void FileBrowser::update_current_page() {
 		auto const number = int(index) + page.offset_from_start + 1;
 		ImGui::TextUnformatted(klib::FixedString{"{: >{}}.", number, number_width}.c_str());
 		ImGui::SameLine();
-		if (ImGui::Selectable(data.relative_path.c_str(), entry == &file_list->get_selected())) { file_list->select_entry(*entry); }
+		if (ImGui::Selectable(data.relative_path.c_str(), entry == &book->get_selected())) { book->select_entry(*entry); }
 	}
 }
 } // namespace xtag::gui::ui::widget
