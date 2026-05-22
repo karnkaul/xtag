@@ -23,13 +23,8 @@ auto MainWindow::update() -> Action {
 }
 
 void MainWindow::set_list(std::shared_ptr<EntryDataList const> list) {
-	m_root_directory = list->path;
-	if (!m_entry_browser.book) {
-		m_entry_browser.book.emplace(std::move(list), widget::EntryBrowser::default_page_limit_v);
-	} else {
-		m_entry_browser.book->refresh(std::move(list));
-	}
-	log.debug("Directory loaded successfully: '{}'", m_root_directory);
+	m_entry_browser.refresh_book(std::move(list));
+	log.debug("Directory loaded successfully: '{}'", m_entry_browser.book->get_root());
 }
 
 auto MainWindow::get_selected() const -> klib::Ptr<Entry const> {
@@ -40,10 +35,10 @@ auto MainWindow::get_selected() const -> klib::Ptr<Entry const> {
 auto MainWindow::get_replacement_tags() const -> std::span<std::string_view const> { return m_tag_editor.get_replacement(); }
 
 void MainWindow::update_header() {
-	if (m_root_directory.empty()) {
+	if (!m_entry_browser.book) {
 		ImGui::TextUnformatted("drag a directory here to begin");
 	} else {
-		ImGui::TextUnformatted(m_root_directory.c_str());
+		ImGui::TextUnformatted(m_entry_browser.book->get_root().data());
 	}
 }
 
@@ -74,7 +69,7 @@ void MainWindow::update_table() {
 			widget::TagEditor::update_short_tags(selected.entry.tags);
 
 			if (ImGui::Button("edit tags")) {
-				m_tag_editor.extract_tags(selected.entry);
+				m_tag_editor.extract_tags(selected.entry.tags);
 				m_open_tag_editor = true;
 			}
 		}

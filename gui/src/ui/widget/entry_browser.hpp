@@ -10,6 +10,8 @@ class EntryBrowser {
 	static constexpr auto page_limits_v = std::array{10, 20, 50, 100, 200};
 	static constexpr auto default_page_limit_v = page_limits_v[3];
 
+	void refresh_book(std::shared_ptr<EntryDataList const> list);
+
 	void update_pagination();
 	auto update_filter() -> bool;
 	void update_current_page();

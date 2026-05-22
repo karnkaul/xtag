@@ -45,6 +45,14 @@ auto update_page_size(int const page_limit) -> int {
 }
 } // namespace
 
+void EntryBrowser::refresh_book(std::shared_ptr<EntryDataList const> list) {
+	if (!book) {
+		book.emplace(std::move(list), default_page_limit_v);
+	} else {
+		book->refresh(std::move(list));
+	}
+}
+
 void EntryBrowser::update_pagination() {
 	if (!book) {
 		update_page_number(0, 0);

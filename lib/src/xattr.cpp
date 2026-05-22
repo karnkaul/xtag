@@ -5,7 +5,6 @@
 
 namespace xtag {
 namespace {
-
 [[nodiscard]] auto from_errno(std::string_view const path, std::string_view const attr_name) -> std::unexpected<Error> {
 	auto const value = errno;
 	KLIB_ASSERT(value != 0);

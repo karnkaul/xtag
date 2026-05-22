@@ -14,11 +14,11 @@ constexpr auto get_tag_color(TagType const type) -> ImVec4 {
 }
 } // namespace
 
-void TagEditor::extract_tags(Entry const& selected) {
+void TagEditor::extract_tags(std::span<ScanTag const> tags) {
 	m_input.clear();
 	m_tags.clear();
-	m_tags.reserve(selected.tags.size());
-	for (auto const& tag : selected.tags) { m_tags.push_back(Tag{.in = tag}); }
+	m_tags.reserve(tags.size());
+	for (auto const& tag : tags) { m_tags.push_back(Tag{.in = tag}); }
 	m_dirty = false;
 }
 

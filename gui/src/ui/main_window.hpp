@@ -26,7 +26,6 @@ class MainWindow {
 	void update_current_page();
 	void update_tag_editor();
 
-	std::string m_root_directory{};
 	widget::EntryBrowser m_entry_browser{};
 	widget::TagEditor m_tag_editor;
 	bool m_open_tag_editor{};
