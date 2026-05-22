@@ -76,7 +76,8 @@ void FileBrowser::update_pagination() {
 
 auto FileBrowser::update_filter() -> bool {
 	ImGui::SetNextItemWidth(150.0f);
-	m_query_input.update("query");
+	static constexpr auto flags_v = ImGuiInputTextFlags_EnterReturnsTrue;
+	auto ret = m_query_input.update("query", flags_v);
 	ImGui::SameLine();
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
 	ImGui::TextColored({0.5f, 0.5f, 0.5f, 1.0f}, "[?]");
@@ -84,7 +85,7 @@ auto FileBrowser::update_filter() -> bool {
 	ImGui::SetItemTooltip("Conjunction of space separated predicates.\npredicate syntax: [-][filename=|tag=]<pattern>");
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!file_list);
-	auto ret = ImGui::Button("search");
+	ret |= ImGui::Button("search");
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("clear")) {
