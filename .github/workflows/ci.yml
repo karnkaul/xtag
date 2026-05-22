@@ -92,7 +92,7 @@ jobs:
       - name: test release
         run: cd build && ctest -V -C Release
   x64-windows-vs22:
-    runs-on: windows-2025
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
       - name: configure
@@ -106,7 +106,7 @@ jobs:
       - name: test release
         run: cd build && ctest -V -C Release
   x64-windows-clang:
-    runs-on: windows-2025
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
       - name: configure
@@ -120,7 +120,7 @@ jobs:
       - name: test release
         run: cd build && ctest -V -C Release
   x64-mingw-gcc:
-    runs-on: windows-2025
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
       - name: configure
